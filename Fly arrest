@@ -11,10 +11,10 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = PlayerGui
 
--- Main Container Frame (BIGGER SIZE)
+-- Main Container Frame (BIGGER SIZE - Updated from screenshot feedback)
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 400, 0, 550)
-MainFrame.Position = UDim2.new(0.5, -200, 0.5, -275)
+MainFrame.Size = UDim2.new(0, 450, 0, 650) -- Increased size
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -325)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
@@ -45,7 +45,7 @@ TitleText.BackgroundTransparency = 1
 TitleText.Text = "SMART FLY FOLLOW"
 TitleText.TextColor3 = Color3.fromRGB(220, 220, 220)
 TitleText.Font = Enum.Font.GothamBold
-TitleText.TextSize = 16
+TitleText.TextSize = 18 -- Increased
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.Parent = TitleBar
 
@@ -75,14 +75,14 @@ CloseButton.Parent = TitleBar
 
 -- Unhide Button (Hidden by default, shows when main GUI is hidden)
 local UnhideButton = Instance.new("TextButton")
-UnhideButton.Size = UDim2.new(0, 60, 0, 60)
+UnhideButton.Size = UDim2.new(0, 70, 0, 70) -- Bigger
 UnhideButton.Position = UDim2.new(0, 10, 0, 10)
 UnhideButton.BackgroundColor3 = Color3.fromRGB(60, 180, 100)
 UnhideButton.BorderSizePixel = 0
 UnhideButton.Text = "SHOW"
 UnhideButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 UnhideButton.Font = Enum.Font.GothamBold
-UnhideButton.TextSize = 12
+UnhideButton.TextSize = 14
 UnhideButton.Visible = false
 UnhideButton.Parent = ScreenGui
 
@@ -94,7 +94,7 @@ Content.Parent = MainFrame
 
 -- Player List Section
 local PlayerListSection = Instance.new("Frame")
-PlayerListSection.Size = UDim2.new(1, -20, 0.5, -10)
+PlayerListSection.Size = UDim2.new(1, -20, 0, 300) -- Fixed height
 PlayerListSection.Position = UDim2.new(0, 10, 0, 10)
 PlayerListSection.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
 PlayerListSection.BorderSizePixel = 0
@@ -107,7 +107,7 @@ SectionTitle.BorderSizePixel = 0
 SectionTitle.Text = "PLAYER LIST"
 SectionTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 SectionTitle.Font = Enum.Font.GothamBold
-SectionTitle.TextSize = 14
+SectionTitle.TextSize = 16 -- Increased
 SectionTitle.Parent = PlayerListSection
 
 local SearchBox = Instance.new("TextBox")
@@ -120,7 +120,7 @@ SearchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
 SearchBox.TextColor3 = Color3.fromRGB(220, 220, 220)
 SearchBox.Text = ""
 SearchBox.Font = Enum.Font.Gotham
-SearchBox.TextSize = 13
+SearchBox.TextSize = 14
 SearchBox.Parent = PlayerListSection
 
 local PlayerListFrame = Instance.new("ScrollingFrame")
@@ -129,16 +129,16 @@ PlayerListFrame.Position = UDim2.new(0, 0, 0, 80)
 PlayerListFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 PlayerListFrame.BorderSizePixel = 0
 PlayerListFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-PlayerListFrame.ScrollBarThickness = 8
+PlayerListFrame.ScrollBarThickness = 10
 PlayerListFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 85)
 PlayerListFrame.Parent = PlayerListSection
 
 local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Padding = UDim.new(0, 3)
+UIListLayout.Padding = UDim.new(0, 4) -- More spacing
 UIListLayout.Parent = PlayerListFrame
 
 local TemplateButton = Instance.new("TextButton")
-TemplateButton.Size = UDim2.new(1, -10, 0, 55) -- Increased height to show both names
+TemplateButton.Size = UDim2.new(1, -10, 0, 60) -- Taller for better visibility
 TemplateButton.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
 TemplateButton.BorderSizePixel = 0
 TemplateButton.Text = ""
@@ -147,8 +147,8 @@ TemplateButton.Parent = PlayerListFrame
 
 -- Control Section
 local ControlSection = Instance.new("Frame")
-ControlSection.Size = UDim2.new(1, -20, 0.45, -5)
-ControlSection.Position = UDim2.new(0, 10, 0.52, 5)
+ControlSection.Size = UDim2.new(1, -20, 0, 290) -- Fixed height
+ControlSection.Position = UDim2.new(0, 10, 0, 320) -- Positioned below player list
 ControlSection.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
 ControlSection.BorderSizePixel = 0
 ControlSection.Parent = Content
@@ -160,11 +160,11 @@ ControlTitle.BorderSizePixel = 0
 ControlTitle.Text = "FOLLOW CONTROLS"
 ControlTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 ControlTitle.Font = Enum.Font.GothamBold
-ControlTitle.TextSize = 14
+ControlTitle.TextSize = 16
 ControlTitle.Parent = ControlSection
 
 local SelectedPlayerLabel = Instance.new("TextLabel")
-SelectedPlayerLabel.Size = UDim2.new(1, -20, 0, 60) -- Increased height
+SelectedPlayerLabel.Size = UDim2.new(1, -20, 0, 70) -- Taller
 SelectedPlayerLabel.Position = UDim2.new(0, 10, 0, 40)
 SelectedPlayerLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 SelectedPlayerLabel.BorderSizePixel = 0
@@ -176,31 +176,31 @@ SelectedPlayerLabel.TextWrapped = true
 SelectedPlayerLabel.Parent = ControlSection
 
 local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, -20, 0, 30)
-StatusLabel.Position = UDim2.new(0, 10, 0, 105) -- Adjusted position
+StatusLabel.Size = UDim2.new(1, -20, 0, 35) -- Taller
+StatusLabel.Position = UDim2.new(0, 10, 0, 115)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Text = "Status: Idle"
 StatusLabel.TextColor3 = Color3.fromRGB(150, 200, 150)
 StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.TextSize = 13
+StatusLabel.TextSize = 14
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 StatusLabel.Parent = ControlSection
 
 local InfoLabel = Instance.new("TextLabel")
 InfoLabel.Size = UDim2.new(1, -20, 0, 40)
-InfoLabel.Position = UDim2.new(0, 10, 0, 135) -- Adjusted position
+InfoLabel.Position = UDim2.new(0, 10, 0, 155)
 InfoLabel.BackgroundTransparency = 1
 InfoLabel.Text = "Mode: Floating Follow\nDistance: 4 | Height: 4"
 InfoLabel.TextColor3 = Color3.fromRGB(200, 200, 100)
 InfoLabel.Font = Enum.Font.Gotham
-InfoLabel.TextSize = 11
+InfoLabel.TextSize = 12
 InfoLabel.TextXAlignment = Enum.TextXAlignment.Left
 InfoLabel.Parent = ControlSection
 
 -- Settings Section
 local SettingsSection = Instance.new("Frame")
-SettingsSection.Size = UDim2.new(1, -20, 0, 70)
-SettingsSection.Position = UDim2.new(0, 10, 0, 170)
+SettingsSection.Size = UDim2.new(1, -20, 0, 80) -- Taller
+SettingsSection.Position = UDim2.new(0, 10, 0, 200)
 SettingsSection.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
 SettingsSection.BorderSizePixel = 0
 SettingsSection.Parent = ControlSection
@@ -212,111 +212,111 @@ SettingsTitle.BorderSizePixel = 0
 SettingsTitle.Text = "FOLLOW SETTINGS"
 SettingsTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 SettingsTitle.Font = Enum.Font.GothamBold
-SettingsTitle.TextSize = 12
+SettingsTitle.TextSize = 13
 SettingsTitle.Parent = SettingsSection
 
 local DistanceContainer = Instance.new("Frame")
-DistanceContainer.Size = UDim2.new(1, -10, 0, 20)
-DistanceContainer.Position = UDim2.new(0, 5, 0.35, 0)
+DistanceContainer.Size = UDim2.new(1, -10, 0, 25)
+DistanceContainer.Position = UDim2.new(0, 5, 0.3, 0)
 DistanceContainer.BackgroundTransparency = 1
 DistanceContainer.Parent = SettingsSection
 
 local DistanceLabel = Instance.new("TextLabel")
-DistanceLabel.Size = UDim2.new(0.3, 0, 1, 0)
+DistanceLabel.Size = UDim2.new(0.35, 0, 1, 0)
 DistanceLabel.Position = UDim2.new(0, 0, 0, 0)
 DistanceLabel.BackgroundTransparency = 1
 DistanceLabel.Text = "Distance:"
 DistanceLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 DistanceLabel.Font = Enum.Font.Gotham
-DistanceLabel.TextSize = 12
+DistanceLabel.TextSize = 13
 DistanceLabel.TextXAlignment = Enum.TextXAlignment.Left
 DistanceLabel.Parent = DistanceContainer
 
 local DistanceValue = Instance.new("TextLabel")
 DistanceValue.Size = UDim2.new(0.2, 0, 1, 0)
-DistanceValue.Position = UDim2.new(0.3, 0, 0, 0)
+DistanceValue.Position = UDim2.new(0.35, 0, 0, 0)
 DistanceValue.BackgroundTransparency = 1
 DistanceValue.Text = "4"
 DistanceValue.TextColor3 = Color3.fromRGB(100, 200, 255)
 DistanceValue.Font = Enum.Font.GothamBold
-DistanceValue.TextSize = 12
+DistanceValue.TextSize = 14
 DistanceValue.Parent = DistanceContainer
 
 local DistanceMinus = Instance.new("TextButton")
-DistanceMinus.Size = UDim2.new(0, 25, 0, 20)
+DistanceMinus.Size = UDim2.new(0, 30, 0, 25) -- Wider
 DistanceMinus.Position = UDim2.new(0.55, 0, 0, 0)
 DistanceMinus.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 DistanceMinus.BorderSizePixel = 0
-DistanceMinus.Text = "-"
+DistanceMinus.Text = "−"
 DistanceMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
 DistanceMinus.Font = Enum.Font.GothamBold
-DistanceMinus.TextSize = 14
+DistanceMinus.TextSize = 16
 DistanceMinus.Parent = DistanceContainer
 
 local DistancePlus = Instance.new("TextButton")
-DistancePlus.Size = UDim2.new(0, 25, 0, 20)
+DistancePlus.Size = UDim2.new(0, 30, 0, 25) -- Wider
 DistancePlus.Position = UDim2.new(0.8, 0, 0, 0)
 DistancePlus.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 DistancePlus.BorderSizePixel = 0
 DistancePlus.Text = "+"
 DistancePlus.TextColor3 = Color3.fromRGB(255, 255, 255)
 DistancePlus.Font = Enum.Font.GothamBold
-DistancePlus.TextSize = 14
+DistancePlus.TextSize = 16
 DistancePlus.Parent = DistanceContainer
 
 local HeightContainer = Instance.new("Frame")
-HeightContainer.Size = UDim2.new(1, -10, 0, 20)
-HeightContainer.Position = UDim2.new(0, 5, 0.7, 0)
+HeightContainer.Size = UDim2.new(1, -10, 0, 25)
+HeightContainer.Position = UDim2.new(0, 5, 0.65, 0)
 HeightContainer.BackgroundTransparency = 1
 HeightContainer.Parent = SettingsSection
 
 local HeightLabel = Instance.new("TextLabel")
-HeightLabel.Size = UDim2.new(0.3, 0, 1, 0)
+HeightLabel.Size = UDim2.new(0.35, 0, 1, 0)
 HeightLabel.Position = UDim2.new(0, 0, 0, 0)
 HeightLabel.BackgroundTransparency = 1
 HeightLabel.Text = "Height:"
 HeightLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 HeightLabel.Font = Enum.Font.Gotham
-HeightLabel.TextSize = 12
+HeightLabel.TextSize = 13
 HeightLabel.TextXAlignment = Enum.TextXAlignment.Left
 HeightLabel.Parent = HeightContainer
 
 local HeightValue = Instance.new("TextLabel")
 HeightValue.Size = UDim2.new(0.2, 0, 1, 0)
-HeightValue.Position = UDim2.new(0.3, 0, 0, 0)
+HeightValue.Position = UDim2.new(0.35, 0, 0, 0)
 HeightValue.BackgroundTransparency = 1
 HeightValue.Text = "4"
 HeightValue.TextColor3 = Color3.fromRGB(100, 200, 255)
 HeightValue.Font = Enum.Font.GothamBold
-HeightValue.TextSize = 12
+HeightValue.TextSize = 14
 HeightValue.Parent = HeightContainer
 
 local HeightMinus = Instance.new("TextButton")
-HeightMinus.Size = UDim2.new(0, 25, 0, 20)
+HeightMinus.Size = UDim2.new(0, 30, 0, 25)
 HeightMinus.Position = UDim2.new(0.55, 0, 0, 0)
 HeightMinus.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 HeightMinus.BorderSizePixel = 0
-HeightMinus.Text = "-"
+HeightMinus.Text = "−"
 HeightMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
 HeightMinus.Font = Enum.Font.GothamBold
-HeightMinus.TextSize = 14
+HeightMinus.TextSize = 16
 HeightMinus.Parent = HeightContainer
 
 local HeightPlus = Instance.new("TextButton")
-HeightPlus.Size = UDim2.new(0, 25, 0, 20)
+HeightPlus.Size = UDim2.new(0, 30, 0, 25)
 HeightPlus.Position = UDim2.new(0.8, 0, 0, 0)
 HeightPlus.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 HeightPlus.BorderSizePixel = 0
 HeightPlus.Text = "+"
 HeightPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
 HeightPlus.Font = Enum.Font.GothamBold
-HeightPlus.TextSize = 14
+HeightPlus.TextSize = 16
 HeightPlus.Parent = HeightContainer
 
 -- Action Buttons Section
 local ActionSection = Instance.new("Frame")
 ActionSection.Size = UDim2.new(1, -20, 0, 50)
-ActionSection.Position = UDim2.new(0, 10, 1, -65)
+ActionSection.Position = UDim2.new(0, 10, 1, -60)
 ActionSection.BackgroundTransparency = 1
 ActionSection.Parent = ControlSection
 
@@ -328,7 +328,7 @@ StickButton.BorderSizePixel = 0
 StickButton.Text = "STICK"
 StickButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 StickButton.Font = Enum.Font.GothamBold
-StickButton.TextSize = 14
+StickButton.TextSize = 16
 StickButton.Parent = ActionSection
 
 local UnstickButton = Instance.new("TextButton")
@@ -339,7 +339,7 @@ UnstickButton.BorderSizePixel = 0
 UnstickButton.Text = "UNSTICK"
 UnstickButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 UnstickButton.Font = Enum.Font.GothamBold
-UnstickButton.TextSize = 14
+UnstickButton.TextSize = 16
 UnstickButton.Parent = ActionSection
 
 -- Variables
@@ -351,12 +351,14 @@ local playerButtons = {}
 local searchFilter = ""
 local targetDistance = 4
 local followHeight = 4
-local maxFollowSpeed = 100
+local maxFollowSpeed = 120
 local currentSpeed = 0
-local smoothness = 0.15
+local smoothness = 0.1 -- Smoother transitions
 local lastTargetPosition = nil
 local targetVelocity = Vector3.new(0, 0, 0)
 local predictiveOffset = Vector3.new(0, 0, 0)
+local lastTargetType = "humanoid"
+local smoothTransitionFactor = 0.2 -- For smooth type transitions
 
 -- Body parts for movement
 local bodyVelocity = nil
@@ -431,10 +433,11 @@ local function getGroundHeight(position)
     return 0
 end
 
--- Enable Flying Mode
+-- IMPROVED: Enable Flying Mode with No-Clip
 local function enableFlyingMode(character)
     if not character then return end
     
+    -- Remove collision from all parts (No-Clip)
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CanCollide = false
@@ -443,44 +446,60 @@ local function enableFlyingMode(character)
     
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if humanoidRootPart then
+        -- Clean up old movers
         if bodyVelocity then bodyVelocity:Destroy() end
         if bodyGyro then bodyGyro:Destroy() end
         if antiGravity then antiGravity:Destroy() end
         
+        -- Create BodyVelocity for movement
         bodyVelocity = Instance.new("BodyVelocity")
         bodyVelocity.Name = "FollowBodyVelocity"
-        bodyVelocity.MaxForce = Vector3.new(40000, 0, 40000)
-        bodyVelocity.P = 1000
+        bodyVelocity.MaxForce = Vector3.new(40000, 40000, 40000) -- Force in all directions
+        bodyVelocity.P = 8000 -- Stronger for better control
         bodyVelocity.Velocity = Vector3.new(0, 0, 0)
         bodyVelocity.Parent = humanoidRootPart
         
+        -- Create BodyGyro for stability
         bodyGyro = Instance.new("BodyGyro")
         bodyGyro.Name = "FollowBodyGyro"
         bodyGyro.MaxTorque = Vector3.new(40000, 40000, 40000)
-        bodyGyro.P = 3000
-        bodyGyro.D = 500
+        bodyGyro.P = 5000
+        bodyGyro.D = 800
         bodyGyro.CFrame = humanoidRootPart.CFrame
         bodyGyro.Parent = humanoidRootPart
         
+        -- Create BodyPosition for height control (better than BodyForce)
+        local bodyPosition = Instance.new("BodyPosition")
+        bodyPosition.Name = "FollowBodyPosition"
+        bodyPosition.MaxForce = Vector3.new(0, 40000, 0)
+        bodyPosition.P = 10000
+        bodyPosition.D = 1000
+        bodyPosition.Position = humanoidRootPart.Position
+        bodyPosition.Parent = humanoidRootPart
+        
+        -- Create BodyForce for anti-gravity
         antiGravity = Instance.new("BodyForce")
         antiGravity.Name = "AntiGravityForce"
-        antiGravity.Force = Vector3.new(0, character:GetMass() * workspace.Gravity, 0)
+        antiGravity.Force = Vector3.new(0, character:GetMass() * workspace.Gravity * 0.8, 0) -- 80% gravity
         antiGravity.Parent = humanoidRootPart
     end
     
-    InfoLabel.Text = string.format("Mode: Floating Follow\nDistance: %d | Height: %d", targetDistance, followHeight)
+    StatusLabel.Text = "Status: Flying & No-Clip ON"
+    InfoLabel.Text = string.format("Mode: Flying (No-Clip)\nDistance: %d | Height: %d", targetDistance, followHeight)
 end
 
 -- Disable Flying Mode
 local function disableFlyingMode(character)
     if not character then return end
     
+    -- Restore collision
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CanCollide = true
         end
     end
     
+    -- Remove movement controllers
     if bodyVelocity then
         bodyVelocity:Destroy()
         bodyVelocity = nil
@@ -496,30 +515,65 @@ local function disableFlyingMode(character)
         antiGravity = nil
     end
     
-    InfoLabel.Text = string.format("Mode: Floating Follow\nDistance: %d | Height: %d", targetDistance, followHeight)
+    -- Remove BodyPosition
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        local bodyPosition = humanoidRootPart:FindFirstChild("FollowBodyPosition")
+        if bodyPosition then
+            bodyPosition:Destroy()
+        end
+    end
+    
+    InfoLabel.Text = string.format("Mode: Ground Follow\nDistance: %d | Height: %d", targetDistance, followHeight)
 end
 
--- Get target's primary part with vehicle detection
+-- IMPROVED: Get target's primary part with BETTER vehicle detection
 local function getTargetPrimaryPart(character)
     if not character then return nil, "unknown" end
     
     local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local isInVehicle = false
+    local vehiclePart = nil
     
+    -- Check if humanoid is in a vehicle seat
     if humanoid and humanoid.SeatPart then
-        local vehicle = humanoid.SeatPart.Parent
+        isInVehicle = true
+        vehiclePart = humanoid.SeatPart
         
-        local assemblyRoot = vehicle:FindFirstChild("AssemblyRootPart")
-        if assemblyRoot and assemblyRoot:IsA("BasePart") then
-            return assemblyRoot, "vehicle"
+        -- Get the vehicle model (could be the seat's parent or the seat itself)
+        local vehicle = vehiclePart.Parent
+        
+        -- Look for common vehicle root parts in order of preference
+        local possibleRoots = {
+            vehicle:FindFirstChild("AssemblyRootPart"),
+            vehicle:FindFirstChild("VehicleSeat"),
+            vehicle:FindFirstChild("Seat"),
+            vehicle.PrimaryPart,
+            vehiclePart -- Fallback to the seat itself
+        }
+        
+        for _, root in ipairs(possibleRoots) do
+            if root and root:IsA("BasePart") then
+                return root, "vehicle"
+            end
         end
         
-        if vehicle:IsA("Model") and vehicle.PrimaryPart then
-            return vehicle.PrimaryPart, "vehicle"
-        end
-        
-        return humanoid.SeatPart, "vehicle"
+        -- If no root found but we have a seat, return the seat
+        return vehiclePart, "vehicle"
     end
     
+    -- Check for other vehicle indicators (VehicleController, VehicleSeat without humanoid)
+    if not isInVehicle then
+        -- Look for VehicleSeat that might have the player sitting but no humanoid
+        for _, part in pairs(character:GetChildren()) do
+            if part:IsA("VehicleSeat") or (part:IsA("Seat") and part:FindFirstChild("Occupant")) then
+                isInVehicle = true
+                return part, "vehicle"
+            end
+        end
+    end
+    
+    -- If no vehicle found, use humanoid parts
     local rootPart = character:FindFirstChild("HumanoidRootPart")
     if rootPart then return rootPart, "humanoid" end
     
@@ -535,41 +589,64 @@ local function getTargetPrimaryPart(character)
     return nil, "unknown"
 end
 
--- Calculate dynamic follow speed
-local function calculateDynamicSpeed(targetVelocity, targetType)
-    local baseSpeed = 25
+-- Calculate dynamic follow speed with smooth transitions
+local function calculateDynamicSpeed(targetVelocity, targetType, targetDistance)
+    local baseSpeed = 30
     local velocityMagnitude = targetVelocity.Magnitude
     
+    -- Adjust base speed based on target type
     if targetType == "vehicle" then
-        baseSpeed = 40
+        baseSpeed = 50 -- Faster for vehicles
     end
     
-    local additionalSpeed = velocityMagnitude * 1.2
-    local calculatedSpeed = math.min(baseSpeed + additionalSpeed, maxFollowSpeed)
+    -- Add target's velocity to our speed
+    local additionalSpeed = velocityMagnitude * 1.5
     
+    -- Adjust speed based on distance
+    local distanceFactor = math.clamp(targetDistance / 10, 0.5, 2.0)
+    
+    -- Limit maximum speed
+    local calculatedSpeed = math.min(baseSpeed + additionalSpeed, maxFollowSpeed) * distanceFactor
+    
+    -- Smooth speed transition with type awareness
     if currentSpeed == 0 then
         currentSpeed = calculatedSpeed
     else
+        -- If target type changed, adjust speed more quickly
+        if targetType ~= lastTargetType then
+            smoothness = 0.3 -- Faster adjustment for type change
+        else
+            smoothness = 0.1 -- Normal smoothness
+        end
+        
         currentSpeed = currentSpeed + (calculatedSpeed - currentSpeed) * smoothness
     end
     
+    lastTargetType = targetType
     return currentSpeed
 end
 
--- Calculate predictive offset
-local function calculatePredictiveOffset(targetVelocity, deltaTime)
-    local lookAheadTime = 0.3
+-- Calculate predictive offset with smoothing
+local function calculatePredictiveOffset(targetVelocity, deltaTime, targetType)
+    -- Predict where target will be based on current velocity
+    local lookAheadTime = targetType == "vehicle" and 0.4 or 0.3 -- Longer prediction for vehicles
+    
     local prediction = targetVelocity * lookAheadTime
     
-    if prediction.Magnitude > 20 then
-        prediction = prediction.Unit * 20
+    -- Clamp prediction to reasonable distance
+    local maxPrediction = targetType == "vehicle" and 25 or 20
+    if prediction.Magnitude > maxPrediction then
+        prediction = prediction.Unit * maxPrediction
     end
     
-    predictiveOffset = predictiveOffset + (prediction - predictiveOffset) * 0.1
+    -- Smoothly transition to new prediction
+    local transitionSpeed = targetType == "vehicle" and 0.15 or 0.1
+    predictiveOffset = predictiveOffset + (prediction - predictiveOffset) * transitionSpeed
+    
     return predictiveOffset
 end
 
--- Smart stick follow function
+-- SMART stick follow function with improved vehicle handling
 local function smartStickFollow()
     if not sticking then return end
     if not selectedPlayer then 
@@ -589,36 +666,58 @@ local function smartStickFollow()
     local targetPrimary, targetType = getTargetPrimaryPart(targetCharacter)
     
     if not rootPart or not targetPrimary then 
-        StatusLabel.Text = "Status: Cannot find body parts"
+        StatusLabel.Text = "Status: Cannot find target"
         return 
     end
     
     local currentTargetPosition = targetPrimary.Position
+    local deltaTime = RunService.Heartbeat:Wait()
+    
+    -- Calculate target velocity with smoothing
     if lastTargetPosition then
-        local deltaTime = RunService.Heartbeat:Wait()
         local positionDelta = currentTargetPosition - lastTargetPosition
-        targetVelocity = positionDelta / deltaTime
-        targetVelocity = targetVelocity:Lerp(Vector3.new(0, 0, 0), 0.3)
+        local newVelocity = positionDelta / deltaTime
+        
+        -- Smooth velocity changes
+        targetVelocity = targetVelocity:Lerp(newVelocity, 0.3)
     end
     lastTargetPosition = currentTargetPosition
     
-    local speed = calculateDynamicSpeed(targetVelocity, targetType)
-    local deltaTime = RunService.Heartbeat:Wait()
-    local prediction = calculatePredictiveOffset(targetVelocity, deltaTime)
+    local speed = calculateDynamicSpeed(targetVelocity, targetType, targetDistance)
+    local prediction = calculatePredictiveOffset(targetVelocity, deltaTime, targetType)
     
     local targetCFrame = targetPrimary.CFrame
-    local baseOffset = Vector3.new(0, followHeight, -targetDistance)
+    
+    -- Adjust parameters based on target type
+    local adjustedHeight = followHeight
+    local adjustedDistance = targetDistance
+    
+    if targetType == "vehicle" then
+        -- Vehicles: Higher and slightly further away
+        adjustedHeight = followHeight + 2
+        adjustedDistance = targetDistance + 2
+    end
+    
+    local baseOffset = Vector3.new(0, adjustedHeight, -adjustedDistance)
     local desiredLocalPosition = baseOffset + prediction
     local desiredWorldPosition = targetCFrame:PointToWorldSpace(desiredLocalPosition)
     
-    -- Anti-baseplate protection
+    -- Enhanced anti-baseplate protection
     local targetGroundHeight = getGroundHeight(currentTargetPosition)
     local ourGroundHeight = getGroundHeight(desiredWorldPosition)
-    local minSafeHeight = math.max(targetGroundHeight, ourGroundHeight) + followHeight
     
-    if currentTargetPosition.Y > targetGroundHeight + 2 then
-        minSafeHeight = currentTargetPosition.Y + followHeight - 2
+    -- Find highest ground point
+    local highestGround = math.max(targetGroundHeight, ourGroundHeight)
+    local minSafeHeight = highestGround + adjustedHeight + 2 -- Extra safety margin
+    
+    -- If target is flying/falling, adjust to their height
+    if currentTargetPosition.Y > targetGroundHeight + 10 then
+        minSafeHeight = math.max(minSafeHeight, currentTargetPosition.Y + adjustedHeight - 5)
     end
+    
+    -- Ensure we never go too low
+    local absoluteMinHeight = 5 -- Baseplate level + 5 studs
+    minSafeHeight = math.max(minSafeHeight, absoluteMinHeight)
     
     if desiredWorldPosition.Y < minSafeHeight then
         desiredWorldPosition = Vector3.new(
@@ -628,75 +727,87 @@ local function smartStickFollow()
         )
     end
     
-    local absoluteMinHeight = 2
-    if desiredWorldPosition.Y < absoluteMinHeight then
-        desiredWorldPosition = Vector3.new(
-            desiredWorldPosition.X,
-            absoluteMinHeight,
-            desiredWorldPosition.Z
-        )
-    end
+    -- Calculate direction to desired position
+    local direction = desiredWorldPosition - rootPart.Position
+    local distance = direction.Magnitude
     
-    local direction = Vector3.new(
-        desiredWorldPosition.X - rootPart.Position.X,
-        0,
-        desiredWorldPosition.Z - rootPart.Position.Z
-    )
-    local horizontalDistance = direction.Magnitude
-    
-    local verticalDifference = desiredWorldPosition.Y - rootPart.Position.Y
-    if antiGravity then
-        local gravityAdjustment = 0
-        if verticalDifference > 1 then
-            gravityAdjustment = verticalDifference * 100
-        elseif verticalDifference < -1 then
-            gravityAdjustment = -verticalDifference * 50
+    -- Adjust vertical position smoothly using BodyPosition
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        local bodyPosition = humanoidRootPart:FindFirstChild("FollowBodyPosition")
+        if bodyPosition then
+            -- Only adjust Y position, X and Z are handled by BodyVelocity
+            local targetYPosition = desiredWorldPosition.Y
+            local currentYPosition = humanoidRootPart.Position.Y
+            local yDifference = targetYPosition - currentYPosition
+            
+            -- Smooth vertical movement
+            if math.abs(yDifference) > 0.5 then
+                local verticalSpeed = math.clamp(yDifference * 2, -15, 15)
+                bodyPosition.Position = Vector3.new(
+                    humanoidRootPart.Position.X,
+                    humanoidRootPart.Position.Y + verticalSpeed * deltaTime,
+                    humanoidRootPart.Position.Z
+                )
+            end
         end
-        
-        local mass = character:GetMass()
-        antiGravity.Force = Vector3.new(0, (mass * workspace.Gravity) + gravityAdjustment, 0)
     end
     
-    if horizontalDistance < targetDistance * 0.5 then
-        speed = speed * 0.5
-    elseif horizontalDistance > targetDistance * 2 then
-        speed = speed * 1.5
+    -- Calculate horizontal movement
+    local horizontalDirection = Vector3.new(direction.X, 0, direction.Z)
+    local horizontalDistance = horizontalDirection.Magnitude
+    
+    -- Adaptive speed based on distance
+    local adaptiveSpeed = speed
+    if horizontalDistance < adjustedDistance * 0.3 then
+        adaptiveSpeed = speed * 0.3 -- Slow down when very close
+    elseif horizontalDistance < adjustedDistance then
+        adaptiveSpeed = speed * (horizontalDistance / adjustedDistance) -- Scale speed with distance
+    elseif horizontalDistance > adjustedDistance * 2 then
+        adaptiveSpeed = speed * 1.5 -- Speed up if far away
     end
     
-    speed = math.clamp(speed, 5, maxFollowSpeed)
+    adaptiveSpeed = math.clamp(adaptiveSpeed, 5, maxFollowSpeed)
     
+    -- Apply horizontal movement
     if horizontalDistance > 0.5 then
-        local velocityDirection = direction.Unit
+        local velocityDirection = horizontalDirection.Unit
         
+        -- Anti-overshoot damping
         if horizontalDistance < 3 then
             local dampingFactor = horizontalDistance / 3
-            speed = speed * dampingFactor
+            adaptiveSpeed = adaptiveSpeed * dampingFactor
         end
         
-        local desiredVelocity = velocityDirection * speed
+        local desiredVelocity = velocityDirection * adaptiveSpeed
         
         if bodyVelocity then
-            bodyVelocity.Velocity = desiredVelocity
+            bodyVelocity.Velocity = Vector3.new(desiredVelocity.X, 0, desiredVelocity.Z)
         end
         
+        -- Face the target (horizontal only)
         if bodyGyro then
             local lookAtPosition = Vector3.new(targetPrimary.Position.X, rootPart.Position.Y, targetPrimary.Position.Z)
             local lookAtCFrame = CFrame.new(rootPart.Position, lookAtPosition)
             bodyGyro.CFrame = lookAtCFrame
         end
     else
+        -- Maintain position
         if bodyVelocity then
             bodyVelocity.Velocity = Vector3.new(0, 0, 0)
         end
     end
     
-    InfoLabel.Text = string.format("Mode: Floating Follow\nDistance: %d | Height: %d", targetDistance, followHeight)
-    StatusLabel.Text = string.format("Status: STICKING (%s)\nDistance: %.1f studs", 
-        selectedPlayer.DisplayName, horizontalDistance)
+    -- Update display
+    local statusType = targetType == "vehicle" and "VEHICLE" or "PERSON"
+    InfoLabel.Text = string.format("Mode: Flying (No-Clip)\nFollowing: %s | Distance: %d", statusType, targetDistance)
+    
+    StatusLabel.Text = string.format("Status: STICKING (%s)\nHoriz. Distance: %.1f | Speed: %.1f", 
+        selectedPlayer.DisplayName, horizontalDistance, adaptiveSpeed)
     StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
 end
 
--- Start sticking to player
+-- Start sticking to player with teleport
 local function stickToPlayer()
     if sticking then 
         StatusLabel.Text = "Status: Already sticking!"
@@ -710,7 +821,7 @@ local function stickToPlayer()
         return 
     end
     
-    StatusLabel.Text = "Status: Initializing stick..."
+    StatusLabel.Text = "Status: Initializing..."
     StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
     
     local character = LocalPlayer.Character
@@ -719,11 +830,48 @@ local function stickToPlayer()
         task.wait(0.5)
     end
     
+    local targetCharacter = selectedPlayer.Character
+    if not targetCharacter then
+        StatusLabel.Text = "Status: Target has no character"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
+        return
+    end
+    
+    local targetPrimary, targetType = getTargetPrimaryPart(targetCharacter)
+    if not targetPrimary then
+        StatusLabel.Text = "Status: Cannot find target body"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
+        return
+    end
+    
+    -- TELEPORT to target first
+    StatusLabel.Text = "Status: Teleporting..."
+    StatusLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        -- Calculate teleport position (behind target at current settings)
+        local teleportOffset = CFrame.new(0, followHeight, -targetDistance)
+        local teleportPosition = targetPrimary.CFrame:ToWorldSpace(teleportOffset).Position
+        
+        -- Ensure we're above ground
+        local groundHeight = getGroundHeight(teleportPosition)
+        if teleportPosition.Y < groundHeight + 5 then
+            teleportPosition = Vector3.new(teleportPosition.X, groundHeight + 5, teleportPosition.Z)
+        end
+        
+        -- Teleport
+        character:PivotTo(CFrame.new(teleportPosition))
+        task.wait(0.1)
+    end
+    
+    -- Enable flying mode (No-Clip)
     enableFlyingMode(character)
     
     sticking = true
     lastTargetPosition = nil
     predictiveOffset = Vector3.new(0, 0, 0)
+    currentSpeed = 0
     
     if stickConnection then
         stickConnection:Disconnect()
@@ -760,7 +908,7 @@ local function unstickFromPlayer()
     
     StatusLabel.Text = "Status: Idle"
     StatusLabel.TextColor3 = Color3.fromRGB(150, 200, 150)
-    InfoLabel.Text = string.format("Mode: Floating Follow\nDistance: %d | Height: %d", targetDistance, followHeight)
+    InfoLabel.Text = string.format("Mode: Ground Follow\nDistance: %d | Height: %d", targetDistance, followHeight)
 end
 
 -- Update player list with search - CLEARLY SHOW BOTH NAMES
@@ -783,71 +931,82 @@ local function updatePlayerList()
                 button.Parent = PlayerListFrame
                 table.insert(playerButtons, button)
                 
-                -- Username Label (Roblox Account Name)
+                -- Username Container
                 local usernameContainer = Instance.new("Frame")
-                usernameContainer.Size = UDim2.new(1, -10, 0, 20)
+                usernameContainer.Size = UDim2.new(1, -10, 0, 25)
                 usernameContainer.Position = UDim2.new(0, 5, 0, 5)
                 usernameContainer.BackgroundTransparency = 1
                 usernameContainer.Parent = button
                 
-                local usernamePrefix = Instance.new("TextLabel")
-                usernamePrefix.Size = UDim2.new(0, 60, 1, 0)
-                usernamePrefix.Position = UDim2.new(0, 0, 0, 0)
-                usernamePrefix.BackgroundTransparency = 1
-                usernamePrefix.Text = "Username:"
-                usernamePrefix.TextColor3 = Color3.fromRGB(180, 180, 180)
-                usernamePrefix.Font = Enum.Font.Gotham
-                usernamePrefix.TextSize = 10
-                usernamePrefix.TextXAlignment = Enum.TextXAlignment.Left
-                usernamePrefix.Parent = usernameContainer
+                local usernameLabel = Instance.new("TextLabel")
+                usernameLabel.Size = UDim2.new(0.4, 0, 1, 0)
+                usernameLabel.Position = UDim2.new(0, 0, 0, 0)
+                usernameLabel.BackgroundTransparency = 1
+                usernameLabel.Text = "Username:"
+                usernameLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+                usernameLabel.Font = Enum.Font.Gotham
+                usernameLabel.TextSize = 11
+                usernameLabel.TextXAlignment = Enum.TextXAlignment.Left
+                usernameLabel.Parent = usernameContainer
                 
                 local usernameValue = Instance.new("TextLabel")
-                usernameValue.Size = UDim2.new(1, -60, 1, 0)
-                usernameValue.Position = UDim2.new(0, 60, 0, 0)
+                usernameValue.Size = UDim2.new(0.6, 0, 1, 0)
+                usernameValue.Position = UDim2.new(0.4, 0, 0, 0)
                 usernameValue.BackgroundTransparency = 1
                 usernameValue.Text = player.Name
                 usernameValue.TextColor3 = Color3.fromRGB(180, 180, 255)
                 usernameValue.Font = Enum.Font.GothamBold
-                usernameValue.TextSize = 11
+                usernameValue.TextSize = 12
                 usernameValue.TextXAlignment = Enum.TextXAlignment.Left
+                usernameValue.TextTruncate = Enum.TextTruncate.AtEnd
                 usernameValue.Parent = usernameContainer
                 
-                -- Display Name Label (Nickname)
+                -- Display Name Container
                 local displayNameContainer = Instance.new("Frame")
-                displayNameContainer.Size = UDim2.new(1, -10, 0, 20)
-                displayNameContainer.Position = UDim2.new(0, 5, 0, 25)
+                displayNameContainer.Size = UDim2.new(1, -10, 0, 25)
+                displayNameContainer.Position = UDim2.new(0, 5, 0, 30)
                 displayNameContainer.BackgroundTransparency = 1
                 displayNameContainer.Parent = button
                 
-                local displayNamePrefix = Instance.new("TextLabel")
-                displayNamePrefix.Size = UDim2.new(0, 60, 1, 0)
-                displayNamePrefix.Position = UDim2.new(0, 0, 0, 0)
-                displayNamePrefix.BackgroundTransparency = 1
-                displayNamePrefix.Text = "Nickname:"
-                displayNamePrefix.TextColor3 = Color3.fromRGB(180, 180, 180)
-                displayNamePrefix.Font = Enum.Font.Gotham
-                displayNamePrefix.TextSize = 10
-                displayNamePrefix.TextXAlignment = Enum.TextXAlignment.Left
-                displayNamePrefix.Parent = displayNameContainer
+                local displayNameLabel = Instance.new("TextLabel")
+                displayNameLabel.Size = UDim2.new(0.4, 0, 1, 0)
+                displayNameLabel.Position = UDim2.new(0, 0, 0, 0)
+                displayNameLabel.BackgroundTransparency = 1
+                displayNameLabel.Text = "Nickname:"
+                displayNameLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+                displayNameLabel.Font = Enum.Font.Gotham
+                displayNameLabel.TextSize = 11
+                displayNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+                displayNameLabel.Parent = displayNameContainer
                 
                 local displayNameValue = Instance.new("TextLabel")
-                displayNameValue.Size = UDim2.new(1, -60, 1, 0)
-                displayNameValue.Position = UDim2.new(0, 60, 0, 0)
+                displayNameValue.Size = UDim2.new(0.6, 0, 1, 0)
+                displayNameValue.Position = UDim2.new(0.4, 0, 0, 0)
                 displayNameValue.BackgroundTransparency = 1
                 displayNameValue.Text = player.DisplayName
                 displayNameValue.TextColor3 = Color3.fromRGB(255, 180, 180)
                 displayNameValue.Font = Enum.Font.GothamBold
-                displayNameValue.TextSize = 11
+                displayNameValue.TextSize = 12
                 displayNameValue.TextXAlignment = Enum.TextXAlignment.Left
+                displayNameValue.TextTruncate = Enum.TextTruncate.AtEnd
                 displayNameValue.Parent = displayNameContainer
                 
                 -- Vehicle indicator
                 local vehicleIndicator = Instance.new("Frame")
-                vehicleIndicator.Size = UDim2.new(0, 8, 0.5, 0)
-                vehicleIndicator.Position = UDim2.new(1, -15, 0.25, 0)
+                vehicleIndicator.Size = UDim2.new(0, 10, 0, 10)
+                vehicleIndicator.Position = UDim2.new(1, -15, 0.5, -5)
                 vehicleIndicator.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
                 vehicleIndicator.BorderSizePixel = 0
                 vehicleIndicator.Parent = button
+                
+                local indicatorLabel = Instance.new("TextLabel")
+                indicatorLabel.Size = UDim2.new(1, 0, 1, 0)
+                indicatorLabel.BackgroundTransparency = 1
+                indicatorLabel.Text = "V"
+                indicatorLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                indicatorLabel.Font = Enum.Font.GothamBold
+                indicatorLabel.TextSize = 8
+                indicatorLabel.Parent = vehicleIndicator
                 
                 -- Monitor player's vehicle status
                 local function updateIndicator()
@@ -855,8 +1014,10 @@ local function updatePlayerList()
                         local _, targetType = getTargetPrimaryPart(player.Character)
                         if targetType == "vehicle" then
                             vehicleIndicator.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+                            indicatorLabel.Text = "V"
                         else
                             vehicleIndicator.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+                            indicatorLabel.Text = "P"
                         end
                     end
                 end
@@ -884,6 +1045,13 @@ local function updatePlayerList()
                         player.Name, player.DisplayName)
                     StatusLabel.Text = "Status: Ready to stick"
                     StatusLabel.TextColor3 = Color3.fromRGB(150, 200, 150)
+                    
+                    -- Update vehicle status
+                    if player.Character then
+                        local _, targetType = getTargetPrimaryPart(player.Character)
+                        local statusText = targetType == "vehicle" and "In Vehicle" or "On Foot"
+                        StatusLabel.Text = string.format("Status: Ready (%s)", statusText)
+                    end
                 end)
             end
         end
@@ -954,7 +1122,7 @@ DistanceMinus.MouseButton1Click:Connect(function()
 end)
 
 DistancePlus.MouseButton1Click:Connect(function()
-    targetDistance = math.min(20, targetDistance + 1)
+    targetDistance = math.min(30, targetDistance + 1) -- Increased max distance
     updateSettingsDisplay()
 end)
 
@@ -965,7 +1133,7 @@ HeightMinus.MouseButton1Click:Connect(function()
 end)
 
 HeightPlus.MouseButton1Click:Connect(function()
-    followHeight = math.min(10, followHeight + 1)
+    followHeight = math.min(15, followHeight + 1) -- Increased max height
     updateSettingsDisplay()
 end)
 
