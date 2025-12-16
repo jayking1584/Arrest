@@ -1,1223 +1,1489 @@
+-- COMPLETE MOBILE-FRIENDLY SMART FOLLOW SYSTEM
+-- Combines advanced follow logic with modern mobile GUI
+
+-- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local TweenService = game:GetService("TweenService")
 
--- GUI Creation
+-- Player variables
+local LocalPlayer = Players.LocalPlayer
+local CurrentTarget = nil
+local Following = false
+local FollowDistance = 3
+local FollowHeight = 4
+local CurrentFlySpeed = 0
+local MaxFlySpeed = 300
+local Method = "Smart Follow"
+local PhysicsFrameId = 0
+
+-- Player nickname system
+local PlayerNicknames = {}
+local SelectedPlayerButton = nil
+
+-- GUI State
+local GuiVisible = true
+local GuiMinimized = false
+local Dragging = false
+local DragStartPosition
+local GuiStartPosition
+
+-- ADVANCED FOLLOW SYSTEM VARIABLES
+local PhysicsRoot = nil
+local PhysicsRootId = nil
+local LastRootCFrame = nil
+local LastRootVelocity = Vector3.new(0, 0, 0)
+local ReferenceOffset = Vector3.new(0, 0, 0)
+local IsPhysicsLocked = false
+local LastLockTime = 0
+local StabilityScore = 0
+local AssemblyChangeDetected = false
+
+-- Performance tracking
+local SpeedHistory = {}
+local AccelerationHistory = {}
+local JerkHistory = {}
+local PhysicsStateHistory = {}
+local MAX_HISTORY = 5
+
+-- Constants for validation
+local MAX_VALID_DELTA = 1000 -- studs per frame
+local MAX_VALID_SPEED = 5000 -- studs/sec
+local STABILITY_THRESHOLD = 5 -- frames of stability required
+local REBIND_COOLDOWN = 0.1 -- seconds between rebinds
+
+-- Colors for theme
+local ColorPalette = {
+    Background = Color3.fromRGB(25, 25, 35),
+    BackgroundLight = Color3.fromRGB(35, 35, 45),
+    BackgroundDark = Color3.fromRGB(15, 15, 25),
+    Primary = Color3.fromRGB(0, 170, 255),
+    PrimaryDark = Color3.fromRGB(0, 140, 225),
+    Secondary = Color3.fromRGB(255, 85, 0),
+    SecondaryDark = Color3.fromRGB(225, 65, 0),
+    Text = Color3.fromRGB(240, 240, 240),
+    TextMuted = Color3.fromRGB(180, 180, 180),
+    Success = Color3.fromRGB(0, 200, 100),
+    Warning = Color3.fromRGB(255, 165, 0),
+    Danger = Color3.fromRGB(255, 60, 60),
+    Selected = Color3.fromRGB(50, 150, 255),
+    ButtonNormal = Color3.fromRGB(50, 50, 70),
+    ButtonPressed = Color3.fromRGB(70, 70, 90)
+}
+
+-- ===================== CREATE MOBILE GUI =====================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SmartFlyFollowGUI"
+ScreenGui.Name = "SmartFollowGUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.Parent = PlayerGui
+ScreenGui.IgnoreGuiInset = true
 
--- Main Container Frame (BIGGER SIZE - Updated from screenshot feedback)
+-- Main container frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 450, 0, 650) -- Increased size
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -325)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0.9, 0, 0.8, 0)
+MainFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
+MainFrame.BackgroundColor3 = ColorPalette.Background
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
-MainFrame.Active = true
-MainFrame.Selectable = true
-MainFrame.Parent = ScreenGui
 
--- Title Bar with Drag Functionality
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 16)
+MainCorner.Parent = MainFrame
+
+-- Title Bar
 local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 50)
+TitleBar.BackgroundColor3 = ColorPalette.BackgroundLight
 TitleBar.BorderSizePixel = 0
+
+local TitleBarCorner = Instance.new("UICorner")
+TitleBarCorner.CornerRadius = UDim.new(0, 16)
+TitleBarCorner.Parent = TitleBar
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(0.7, 0, 1, 0)
+Title.Position = UDim2.new(0, 20, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "🚀 ULTIMATE FLY FOLLOW"
+Title.TextColor3 = ColorPalette.Primary
+Title.TextSize = 22
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.TextYAlignment = Enum.TextYAlignment.Center
+Title.Parent = TitleBar
+
+-- Control buttons
+local ControlButtons = Instance.new("Frame")
+ControlButtons.Name = "ControlButtons"
+ControlButtons.Size = UDim2.new(0.3, 0, 1, 0)
+ControlButtons.Position = UDim2.new(0.7, 0, 0, 0)
+ControlButtons.BackgroundTransparency = 1
+ControlButtons.Parent = TitleBar
+
+local MinimizeButton = Instance.new("ImageButton")
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.Size = UDim2.new(0.3, 0, 0.6, 0)
+MinimizeButton.Position = UDim2.new(0, 10, 0.2, 0)
+MinimizeButton.BackgroundColor3 = ColorPalette.ButtonNormal
+MinimizeButton.Image = "rbxassetid://3926305904"
+MinimizeButton.ImageRectOffset = Vector2.new(124, 204)
+MinimizeButton.ImageRectSize = Vector2.new(36, 36)
+MinimizeButton.ImageColor3 = ColorPalette.Text
+
+local MinimizeCorner = Instance.new("UICorner")
+MinimizeCorner.CornerRadius = UDim.new(0, 8)
+MinimizeCorner.Parent = MinimizeButton
+
+local HideButton = Instance.new("ImageButton")
+HideButton.Name = "HideButton"
+HideButton.Size = UDim2.new(0.3, 0, 0.6, 0)
+HideButton.Position = UDim2.new(0.35, 0, 0.2, 0)
+HideButton.BackgroundColor3 = ColorPalette.ButtonNormal
+HideButton.Image = "rbxassetid://3926305904"
+HideButton.ImageRectOffset = Vector2.new(924, 724)
+HideButton.ImageRectSize = Vector2.new(36, 36)
+HideButton.ImageColor3 = ColorPalette.Text
+
+local HideCorner = Instance.new("UICorner")
+HideCorner.CornerRadius = UDim.new(0, 8)
+HideCorner.Parent = HideButton
+
+local CloseButton = Instance.new("ImageButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Size = UDim2.new(0.3, 0, 0.6, 0)
+CloseButton.Position = UDim2.new(0.7, 0, 0.2, 0)
+CloseButton.BackgroundColor3 = ColorPalette.Danger
+CloseButton.Image = "rbxassetid://3926305904"
+CloseButton.ImageRectOffset = Vector2.new(284, 4)
+CloseButton.ImageRectSize = Vector2.new(24, 24)
+CloseButton.ImageColor3 = Color3.new(1, 1, 1)
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 8)
+CloseCorner.Parent = CloseButton
+
+MinimizeButton.Parent = ControlButtons
+HideButton.Parent = ControlButtons
+CloseButton.Parent = ControlButtons
 TitleBar.Parent = MainFrame
 
--- Draggable area in title bar (TOUCH-COMPATIBLE)
-local DragArea = Instance.new("TextButton")
-DragArea.Size = UDim2.new(1, -80, 1, 0)
-DragArea.Position = UDim2.new(0, 0, 0, 0)
-DragArea.BackgroundTransparency = 1
-DragArea.Text = ""
-DragArea.TextTransparency = 1
-DragArea.Parent = TitleBar
+-- Main content
+local MainContent = Instance.new("Frame")
+MainContent.Name = "MainContent"
+MainContent.Size = UDim2.new(1, 0, 1, -50)
+MainContent.Position = UDim2.new(0, 0, 0, 50)
+MainContent.BackgroundTransparency = 1
+MainContent.Parent = MainFrame
 
-local TitleText = Instance.new("TextLabel")
-TitleText.Size = UDim2.new(1, -80, 1, 0)
-TitleText.Position = UDim2.new(0, 15, 0, 0)
-TitleText.BackgroundTransparency = 1
-TitleText.Text = "SMART FLY FOLLOW"
-TitleText.TextColor3 = Color3.fromRGB(220, 220, 220)
-TitleText.Font = Enum.Font.GothamBold
-TitleText.TextSize = 18 -- Increased
-TitleText.TextXAlignment = Enum.TextXAlignment.Left
-TitleText.Parent = TitleBar
+local ContentPadding = Instance.new("UIPadding")
+ContentPadding.PaddingLeft = UDim.new(0, 15)
+ContentPadding.PaddingRight = UDim.new(0, 15)
+ContentPadding.PaddingTop = UDim.new(0, 15)
+ContentPadding.PaddingBottom = UDim.new(0, 15)
+ContentPadding.Parent = MainContent
 
--- Hide Button
-local HideButton = Instance.new("TextButton")
-HideButton.Size = UDim2.new(0, 30, 0, 30)
-HideButton.Position = UDim2.new(1, -75, 0.5, -15)
-HideButton.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
-HideButton.BorderSizePixel = 0
-HideButton.Text = "—"
-HideButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-HideButton.Font = Enum.Font.GothamBold
-HideButton.TextSize = 16
-HideButton.Parent = TitleBar
-
--- Close Button
-local CloseButton = Instance.new("TextButton")
-CloseButton.Size = UDim2.new(0, 30, 0, 30)
-CloseButton.Position = UDim2.new(1, -40, 0.5, -15)
-CloseButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-CloseButton.BorderSizePixel = 0
-CloseButton.Text = "×"
-CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseButton.Font = Enum.Font.GothamBold
-CloseButton.TextSize = 20
-CloseButton.Parent = TitleBar
-
--- Unhide Button (Hidden by default, shows when main GUI is hidden)
-local UnhideButton = Instance.new("TextButton")
-UnhideButton.Size = UDim2.new(0, 70, 0, 70) -- Bigger
-UnhideButton.Position = UDim2.new(0, 10, 0, 10)
-UnhideButton.BackgroundColor3 = Color3.fromRGB(60, 180, 100)
-UnhideButton.BorderSizePixel = 0
-UnhideButton.Text = "SHOW"
-UnhideButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-UnhideButton.Font = Enum.Font.GothamBold
-UnhideButton.TextSize = 14
-UnhideButton.Visible = false
-UnhideButton.Parent = ScreenGui
-
-local Content = Instance.new("Frame")
-Content.Size = UDim2.new(1, 0, 1, -40)
-Content.Position = UDim2.new(0, 0, 0, 40)
-Content.BackgroundTransparency = 1
-Content.Parent = MainFrame
-
--- Player List Section
+-- Player list section
 local PlayerListSection = Instance.new("Frame")
-PlayerListSection.Size = UDim2.new(1, -20, 0, 300) -- Fixed height
-PlayerListSection.Position = UDim2.new(0, 10, 0, 10)
-PlayerListSection.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+PlayerListSection.Name = "PlayerListSection"
+PlayerListSection.Size = UDim2.new(1, 0, 0.4, 0)
+PlayerListSection.BackgroundColor3 = ColorPalette.BackgroundLight
 PlayerListSection.BorderSizePixel = 0
-PlayerListSection.Parent = Content
 
-local SectionTitle = Instance.new("TextLabel")
-SectionTitle.Size = UDim2.new(1, 0, 0, 35)
-SectionTitle.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-SectionTitle.BorderSizePixel = 0
-SectionTitle.Text = "PLAYER LIST"
-SectionTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
-SectionTitle.Font = Enum.Font.GothamBold
-SectionTitle.TextSize = 16 -- Increased
-SectionTitle.Parent = PlayerListSection
+local PlayerListCorner = Instance.new("UICorner")
+PlayerListCorner.CornerRadius = UDim.new(0, 12)
+PlayerListCorner.Parent = PlayerListSection
 
-local SearchBox = Instance.new("TextBox")
-SearchBox.Size = UDim2.new(1, -10, 0, 35)
-SearchBox.Position = UDim2.new(0, 5, 0, 40)
-SearchBox.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-SearchBox.BorderSizePixel = 0
-SearchBox.PlaceholderText = "Search players..."
-SearchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
-SearchBox.TextColor3 = Color3.fromRGB(220, 220, 220)
-SearchBox.Text = ""
-SearchBox.Font = Enum.Font.Gotham
-SearchBox.TextSize = 14
-SearchBox.Parent = PlayerListSection
+local PlayerListTitle = Instance.new("TextLabel")
+PlayerListTitle.Name = "PlayerListTitle"
+PlayerListTitle.Size = UDim2.new(1, 0, 0, 50)
+PlayerListTitle.BackgroundTransparency = 1
+PlayerListTitle.Text = "👥 PLAYER LIST"
+PlayerListTitle.TextColor3 = ColorPalette.Text
+PlayerListTitle.TextSize = 18
+PlayerListTitle.Font = Enum.Font.GothamBold
+PlayerListTitle.TextXAlignment = Enum.TextXAlignment.Left
+PlayerListTitle.TextYAlignment = Enum.TextYAlignment.Center
+PlayerListTitle.Parent = PlayerListSection
 
-local PlayerListFrame = Instance.new("ScrollingFrame")
-PlayerListFrame.Size = UDim2.new(1, 0, 1, -85)
-PlayerListFrame.Position = UDim2.new(0, 0, 0, 80)
-PlayerListFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-PlayerListFrame.BorderSizePixel = 0
-PlayerListFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-PlayerListFrame.ScrollBarThickness = 10
-PlayerListFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 85)
-PlayerListFrame.Parent = PlayerListSection
+local PlayerListContainer = Instance.new("ScrollingFrame")
+PlayerListContainer.Name = "PlayerListContainer"
+PlayerListContainer.Size = UDim2.new(1, -20, 1, -60)
+PlayerListContainer.Position = UDim2.new(0, 10, 0, 50)
+PlayerListContainer.BackgroundTransparency = 1
+PlayerListContainer.BorderSizePixel = 0
+PlayerListContainer.ScrollBarThickness = 8
+PlayerListContainer.ScrollBarImageColor3 = ColorPalette.BackgroundDark
+PlayerListContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+PlayerListContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Padding = UDim.new(0, 4) -- More spacing
-UIListLayout.Parent = PlayerListFrame
+local PlayerListLayout = Instance.new("UIListLayout")
+PlayerListLayout.SortOrder = Enum.SortOrder.Name
+PlayerListLayout.Padding = UDim.new(0, 8)
+PlayerListLayout.Parent = PlayerListContainer
 
-local TemplateButton = Instance.new("TextButton")
-TemplateButton.Size = UDim2.new(1, -10, 0, 60) -- Taller for better visibility
-TemplateButton.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-TemplateButton.BorderSizePixel = 0
-TemplateButton.Text = ""
-TemplateButton.Visible = false
-TemplateButton.Parent = PlayerListFrame
+PlayerListContainer.Parent = PlayerListSection
+PlayerListSection.Parent = MainContent
 
--- Control Section
-local ControlSection = Instance.new("Frame")
-ControlSection.Size = UDim2.new(1, -20, 0, 290) -- Fixed height
-ControlSection.Position = UDim2.new(0, 10, 0, 320) -- Positioned below player list
-ControlSection.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-ControlSection.BorderSizePixel = 0
-ControlSection.Parent = Content
+-- Controls section (with advanced metrics)
+local ControlsSection = Instance.new("Frame")
+ControlsSection.Name = "ControlsSection"
+ControlsSection.Size = UDim2.new(1, 0, 0.35, 0)
+ControlsSection.Position = UDim2.new(0, 0, 0.42, 0)
+ControlsSection.BackgroundColor3 = ColorPalette.BackgroundLight
+ControlsSection.BorderSizePixel = 0
 
-local ControlTitle = Instance.new("TextLabel")
-ControlTitle.Size = UDim2.new(1, 0, 0, 35)
-ControlTitle.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-ControlTitle.BorderSizePixel = 0
-ControlTitle.Text = "FOLLOW CONTROLS"
-ControlTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
-ControlTitle.Font = Enum.Font.GothamBold
-ControlTitle.TextSize = 16
-ControlTitle.Parent = ControlSection
+local ControlsCorner = Instance.new("UICorner")
+ControlsCorner.CornerRadius = UDim.new(0, 12)
+ControlsCorner.Parent = ControlsSection
 
-local SelectedPlayerLabel = Instance.new("TextLabel")
-SelectedPlayerLabel.Size = UDim2.new(1, -20, 0, 70) -- Taller
-SelectedPlayerLabel.Position = UDim2.new(0, 10, 0, 40)
-SelectedPlayerLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-SelectedPlayerLabel.BorderSizePixel = 0
-SelectedPlayerLabel.Text = "Selected: None"
-SelectedPlayerLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-SelectedPlayerLabel.Font = Enum.Font.Gotham
-SelectedPlayerLabel.TextSize = 13
-SelectedPlayerLabel.TextWrapped = true
-SelectedPlayerLabel.Parent = ControlSection
+local ControlsTitle = Instance.new("TextLabel")
+ControlsTitle.Name = "ControlsTitle"
+ControlsTitle.Size = UDim2.new(1, 0, 0, 40)
+ControlsTitle.BackgroundTransparency = 1
+ControlsTitle.Text = "⚙️ FOLLOW CONTROLS"
+ControlsTitle.TextColor3 = ColorPalette.Text
+ControlsTitle.TextSize = 18
+ControlsTitle.Font = Enum.Font.GothamBold
+ControlsTitle.TextXAlignment = Enum.TextXAlignment.Left
+ControlsTitle.TextYAlignment = Enum.TextYAlignment.Center
+ControlsTitle.Parent = ControlsSection
+
+local ControlsGrid = Instance.new("Frame")
+ControlsGrid.Name = "ControlsGrid"
+ControlsGrid.Size = UDim2.new(1, -20, 1, -60)
+ControlsGrid.Position = UDim2.new(0, 10, 0, 50)
+ControlsGrid.BackgroundTransparency = 1
+ControlsGrid.Parent = ControlsSection
+
+-- Selected player
+local SelectedDisplay = Instance.new("Frame")
+SelectedDisplay.Name = "SelectedDisplay"
+SelectedDisplay.Size = UDim2.new(1, 0, 0, 45)
+SelectedDisplay.BackgroundColor3 = ColorPalette.BackgroundDark
+SelectedDisplay.BorderSizePixel = 0
+
+local SelectedCorner = Instance.new("UICorner")
+SelectedCorner.CornerRadius = UDim.new(0, 8)
+SelectedCorner.Parent = SelectedDisplay
+
+local SelectedLabel = Instance.new("TextLabel")
+SelectedLabel.Name = "SelectedLabel"
+SelectedLabel.Size = UDim2.new(1, -10, 1, 0)
+SelectedLabel.Position = UDim2.new(0, 5, 0, 0)
+SelectedLabel.BackgroundTransparency = 1
+SelectedLabel.Text = "Selected: None"
+SelectedLabel.TextColor3 = ColorPalette.Text
+SelectedLabel.TextSize = 16
+SelectedLabel.Font = Enum.Font.Gotham
+SelectedLabel.TextXAlignment = Enum.TextXAlignment.Left
+SelectedLabel.TextYAlignment = Enum.TextYAlignment.Center
+SelectedLabel.Parent = SelectedDisplay
+
+-- Follow/Unfollow buttons
+local ButtonContainer = Instance.new("Frame")
+ButtonContainer.Name = "ButtonContainer"
+ButtonContainer.Size = UDim2.new(1, 0, 0, 60)
+ButtonContainer.Position = UDim2.new(0, 0, 0, 55)
+ButtonContainer.BackgroundTransparency = 1
+ButtonContainer.Parent = ControlsGrid
+
+local FollowButton = Instance.new("TextButton")
+FollowButton.Name = "FollowButton"
+FollowButton.Size = UDim2.new(0.48, 0, 1, 0)
+FollowButton.Position = UDim2.new(0, 0, 0, 0)
+FollowButton.BackgroundColor3 = ColorPalette.Success
+FollowButton.Text = "▶ FOLLOW"
+FollowButton.TextColor3 = Color3.new(1, 1, 1)
+FollowButton.TextSize = 18
+FollowButton.Font = Enum.Font.GothamBold
+FollowButton.TextYAlignment = Enum.TextYAlignment.Center
+
+local FollowCorner = Instance.new("UICorner")
+FollowCorner.CornerRadius = UDim.new(0, 10)
+FollowCorner.Parent = FollowButton
+
+local UnfollowButton = Instance.new("TextButton")
+UnfollowButton.Name = "UnfollowButton"
+UnfollowButton.Size = UDim2.new(0.48, 0, 1, 0)
+UnfollowButton.Position = UDim2.new(0.52, 0, 0, 0)
+UnfollowButton.BackgroundColor3 = ColorPalette.ButtonNormal
+UnfollowButton.Text = "⏹ UNFOLLOW"
+UnfollowButton.TextColor3 = ColorPalette.Text
+UnfollowButton.TextSize = 18
+UnfollowButton.Font = Enum.Font.GothamBold
+UnfollowButton.TextYAlignment = Enum.TextYAlignment.Center
+
+local UnfollowCorner = Instance.new("UICorner")
+UnfollowCorner.CornerRadius = UDim.new(0, 10)
+UnfollowCorner.Parent = UnfollowButton
+
+FollowButton.Parent = ButtonContainer
+UnfollowButton.Parent = ButtonContainer
+
+-- Status display
+local StatusDisplay = Instance.new("Frame")
+StatusDisplay.Name = "StatusDisplay"
+StatusDisplay.Size = UDim2.new(1, 0, 0, 40)
+StatusDisplay.Position = UDim2.new(0, 0, 0, 125)
+StatusDisplay.BackgroundColor3 = ColorPalette.BackgroundDark
+StatusDisplay.BorderSizePixel = 0
+
+local StatusCorner = Instance.new("UICorner")
+StatusCorner.CornerRadius = UDim.new(0, 8)
+StatusCorner.Parent = StatusDisplay
 
 local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, -20, 0, 35) -- Taller
-StatusLabel.Position = UDim2.new(0, 10, 0, 115)
+StatusLabel.Name = "StatusLabel"
+StatusLabel.Size = UDim2.new(1, -10, 1, 0)
+StatusLabel.Position = UDim2.new(0, 5, 0, 0)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Text = "Status: Idle"
-StatusLabel.TextColor3 = Color3.fromRGB(150, 200, 150)
+StatusLabel.TextColor3 = ColorPalette.Text
+StatusLabel.TextSize = 16
 StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.TextSize = 14
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-StatusLabel.Parent = ControlSection
+StatusLabel.TextYAlignment = Enum.TextYAlignment.Center
+StatusLabel.Parent = StatusDisplay
 
-local InfoLabel = Instance.new("TextLabel")
-InfoLabel.Size = UDim2.new(1, -20, 0, 40)
-InfoLabel.Position = UDim2.new(0, 10, 0, 155)
-InfoLabel.BackgroundTransparency = 1
-InfoLabel.Text = "Mode: Floating Follow\nDistance: 4 | Height: 4"
-InfoLabel.TextColor3 = Color3.fromRGB(200, 200, 100)
-InfoLabel.Font = Enum.Font.Gotham
-InfoLabel.TextSize = 12
-InfoLabel.TextXAlignment = Enum.TextXAlignment.Left
-InfoLabel.Parent = ControlSection
+-- Method display
+local MethodDisplay = Instance.new("Frame")
+MethodDisplay.Name = "MethodDisplay"
+MethodDisplay.Size = UDim2.new(1, 0, 0, 40)
+MethodDisplay.Position = UDim2.new(0, 0, 0, 175)
+MethodDisplay.BackgroundColor3 = ColorPalette.BackgroundDark
+MethodDisplay.BorderSizePixel = 0
 
--- Settings Section
+local MethodCorner = Instance.new("UICorner")
+MethodCorner.CornerRadius = UDim.new(0, 8)
+MethodCorner.Parent = MethodDisplay
+
+local MethodLabel = Instance.new("TextLabel")
+MethodLabel.Name = "MethodLabel"
+MethodLabel.Size = UDim2.new(1, -10, 1, 0)
+MethodLabel.Position = UDim2.new(0, 5, 0, 0)
+MethodLabel.BackgroundTransparency = 1
+MethodLabel.Text = "Method: None"
+MethodLabel.TextColor3 = ColorPalette.Text
+MethodLabel.TextSize = 16
+MethodLabel.Font = Enum.Font.Gotham
+MethodLabel.TextXAlignment = Enum.TextXAlignment.Left
+MethodLabel.TextYAlignment = Enum.TextYAlignment.Center
+MethodLabel.Parent = MethodDisplay
+
+-- Advanced metrics display
+local MetricsGrid = Instance.new("Frame")
+MetricsGrid.Name = "MetricsGrid"
+MetricsGrid.Size = UDim2.new(1, 0, 0, 90)
+MetricsGrid.Position = UDim2.new(0, 0, 0, 225)
+MetricsGrid.BackgroundTransparency = 1
+MetricsGrid.Parent = ControlsGrid
+
+-- Speed display
+local SpeedDisplay = Instance.new("Frame")
+SpeedDisplay.Name = "SpeedDisplay"
+SpeedDisplay.Size = UDim2.new(0.48, 0, 0, 40)
+SpeedDisplay.BackgroundColor3 = ColorPalette.BackgroundDark
+SpeedDisplay.BorderSizePixel = 0
+
+local SpeedCorner = Instance.new("UICorner")
+SpeedCorner.CornerRadius = UDim.new(0, 8)
+SpeedCorner.Parent = SpeedDisplay
+
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Name = "SpeedLabel"
+SpeedLabel.Size = UDim2.new(1, -10, 1, 0)
+SpeedLabel.Position = UDim2.new(0, 5, 0, 0)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.Text = "Speed: 0"
+SpeedLabel.TextColor3 = ColorPalette.Text
+SpeedLabel.TextSize = 14
+SpeedLabel.Font = Enum.Font.Gotham
+SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+SpeedLabel.TextYAlignment = Enum.TextYAlignment.Center
+SpeedLabel.Parent = SpeedDisplay
+
+-- Stability display
+local StabilityDisplay = Instance.new("Frame")
+StabilityDisplay.Name = "StabilityDisplay"
+StabilityDisplay.Size = UDim2.new(0.48, 0, 0, 40)
+StabilityDisplay.Position = UDim2.new(0.52, 0, 0, 0)
+StabilityDisplay.BackgroundColor3 = ColorPalette.BackgroundDark
+StabilityDisplay.BorderSizePixel = 0
+
+local StabilityCorner = Instance.new("UICorner")
+StabilityCorner.CornerRadius = UDim.new(0, 8)
+StabilityCorner.Parent = StabilityDisplay
+
+local StabilityLabel = Instance.new("TextLabel")
+StabilityLabel.Name = "StabilityLabel"
+StabilityLabel.Size = UDim2.new(1, -10, 1, 0)
+StabilityLabel.Position = UDim2.new(0, 5, 0, 0)
+StabilityLabel.BackgroundTransparency = 1
+StabilityLabel.Text = "Stability: 0%"
+StabilityLabel.TextColor3 = ColorPalette.Text
+StabilityLabel.TextSize = 14
+StabilityLabel.Font = Enum.Font.Gotham
+StabilityLabel.TextXAlignment = Enum.TextXAlignment.Left
+StabilityLabel.TextYAlignment = Enum.TextYAlignment.Center
+StabilityLabel.Parent = StabilityDisplay
+
+-- Lock quality display
+local LockDisplay = Instance.new("Frame")
+LockDisplay.Name = "LockDisplay"
+LockDisplay.Size = UDim2.new(1, 0, 0, 40)
+LockDisplay.Position = UDim2.new(0, 0, 0, 50)
+LockDisplay.BackgroundColor3 = ColorPalette.BackgroundDark
+LockDisplay.BorderSizePixel = 0
+
+local LockCorner = Instance.new("UICorner")
+LockCorner.CornerRadius = UDim.new(0, 8)
+LockCorner.Parent = LockDisplay
+
+local LockQualityLabel = Instance.new("TextLabel")
+LockQualityLabel.Name = "LockQualityLabel"
+LockQualityLabel.Size = UDim2.new(1, -10, 1, 0)
+LockQualityLabel.Position = UDim2.new(0, 5, 0, 0)
+LockQualityLabel.BackgroundTransparency = 1
+LockQualityLabel.Text = "Lock: 0%"
+LockQualityLabel.TextColor3 = ColorPalette.Text
+LockQualityLabel.TextSize = 14
+LockQualityLabel.Font = Enum.Font.Gotham
+LockQualityLabel.TextXAlignment = Enum.TextXAlignment.Left
+LockQualityLabel.TextYAlignment = Enum.TextYAlignment.Center
+LockQualityLabel.Parent = LockDisplay
+
+SpeedDisplay.Parent = MetricsGrid
+StabilityDisplay.Parent = MetricsGrid
+LockDisplay.Parent = MetricsGrid
+
+SelectedDisplay.Parent = ControlsGrid
+ButtonContainer.Parent = ControlsGrid
+StatusDisplay.Parent = ControlsGrid
+MethodDisplay.Parent = ControlsGrid
+ControlsSection.Parent = MainContent
+
+-- Settings section
 local SettingsSection = Instance.new("Frame")
-SettingsSection.Size = UDim2.new(1, -20, 0, 80) -- Taller
-SettingsSection.Position = UDim2.new(0, 10, 0, 200)
-SettingsSection.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+SettingsSection.Name = "SettingsSection"
+SettingsSection.Size = UDim2.new(1, 0, 0.2, 0)
+SettingsSection.Position = UDim2.new(0, 0, 0.79, 0)
+SettingsSection.BackgroundColor3 = ColorPalette.BackgroundLight
 SettingsSection.BorderSizePixel = 0
-SettingsSection.Parent = ControlSection
+
+local SettingsCorner = Instance.new("UICorner")
+SettingsCorner.CornerRadius = UDim.new(0, 12)
+SettingsCorner.Parent = SettingsSection
 
 local SettingsTitle = Instance.new("TextLabel")
-SettingsTitle.Size = UDim2.new(1, 0, 0, 25)
-SettingsTitle.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-SettingsTitle.BorderSizePixel = 0
-SettingsTitle.Text = "FOLLOW SETTINGS"
-SettingsTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+SettingsTitle.Name = "SettingsTitle"
+SettingsTitle.Size = UDim2.new(1, 0, 0, 40)
+SettingsTitle.BackgroundTransparency = 1
+SettingsTitle.Text = "🔧 FOLLOW SETTINGS"
+SettingsTitle.TextColor3 = ColorPalette.Text
+SettingsTitle.TextSize = 18
 SettingsTitle.Font = Enum.Font.GothamBold
-SettingsTitle.TextSize = 13
+SettingsTitle.TextXAlignment = Enum.TextXAlignment.Left
+SettingsTitle.TextYAlignment = Enum.TextYAlignment.Center
 SettingsTitle.Parent = SettingsSection
 
-local DistanceContainer = Instance.new("Frame")
-DistanceContainer.Size = UDim2.new(1, -10, 0, 25)
-DistanceContainer.Position = UDim2.new(0, 5, 0.3, 0)
-DistanceContainer.BackgroundTransparency = 1
-DistanceContainer.Parent = SettingsSection
+local SettingsGrid = Instance.new("Frame")
+SettingsGrid.Name = "SettingsGrid"
+SettingsGrid.Size = UDim2.new(1, -20, 1, -60)
+SettingsGrid.Position = UDim2.new(0, 10, 0, 50)
+SettingsGrid.BackgroundTransparency = 1
+SettingsGrid.Parent = SettingsSection
 
-local DistanceLabel = Instance.new("TextLabel")
-DistanceLabel.Size = UDim2.new(0.35, 0, 1, 0)
-DistanceLabel.Position = UDim2.new(0, 0, 0, 0)
-DistanceLabel.BackgroundTransparency = 1
-DistanceLabel.Text = "Distance:"
-DistanceLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-DistanceLabel.Font = Enum.Font.Gotham
-DistanceLabel.TextSize = 13
-DistanceLabel.TextXAlignment = Enum.TextXAlignment.Left
-DistanceLabel.Parent = DistanceContainer
-
-local DistanceValue = Instance.new("TextLabel")
-DistanceValue.Size = UDim2.new(0.2, 0, 1, 0)
-DistanceValue.Position = UDim2.new(0.35, 0, 0, 0)
-DistanceValue.BackgroundTransparency = 1
-DistanceValue.Text = "4"
-DistanceValue.TextColor3 = Color3.fromRGB(100, 200, 255)
-DistanceValue.Font = Enum.Font.GothamBold
-DistanceValue.TextSize = 14
-DistanceValue.Parent = DistanceContainer
-
-local DistanceMinus = Instance.new("TextButton")
-DistanceMinus.Size = UDim2.new(0, 30, 0, 25) -- Wider
-DistanceMinus.Position = UDim2.new(0.55, 0, 0, 0)
-DistanceMinus.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-DistanceMinus.BorderSizePixel = 0
-DistanceMinus.Text = "−"
-DistanceMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
-DistanceMinus.Font = Enum.Font.GothamBold
-DistanceMinus.TextSize = 16
-DistanceMinus.Parent = DistanceContainer
-
-local DistancePlus = Instance.new("TextButton")
-DistancePlus.Size = UDim2.new(0, 30, 0, 25) -- Wider
-DistancePlus.Position = UDim2.new(0.8, 0, 0, 0)
-DistancePlus.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-DistancePlus.BorderSizePixel = 0
-DistancePlus.Text = "+"
-DistancePlus.TextColor3 = Color3.fromRGB(255, 255, 255)
-DistancePlus.Font = Enum.Font.GothamBold
-DistancePlus.TextSize = 16
-DistancePlus.Parent = DistanceContainer
-
-local HeightContainer = Instance.new("Frame")
-HeightContainer.Size = UDim2.new(1, -10, 0, 25)
-HeightContainer.Position = UDim2.new(0, 5, 0.65, 0)
-HeightContainer.BackgroundTransparency = 1
-HeightContainer.Parent = SettingsSection
-
-local HeightLabel = Instance.new("TextLabel")
-HeightLabel.Size = UDim2.new(0.35, 0, 1, 0)
-HeightLabel.Position = UDim2.new(0, 0, 0, 0)
-HeightLabel.BackgroundTransparency = 1
-HeightLabel.Text = "Height:"
-HeightLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-HeightLabel.Font = Enum.Font.Gotham
-HeightLabel.TextSize = 13
-HeightLabel.TextXAlignment = Enum.TextXAlignment.Left
-HeightLabel.Parent = HeightContainer
-
-local HeightValue = Instance.new("TextLabel")
-HeightValue.Size = UDim2.new(0.2, 0, 1, 0)
-HeightValue.Position = UDim2.new(0.35, 0, 0, 0)
-HeightValue.BackgroundTransparency = 1
-HeightValue.Text = "4"
-HeightValue.TextColor3 = Color3.fromRGB(100, 200, 255)
-HeightValue.Font = Enum.Font.GothamBold
-HeightValue.TextSize = 14
-HeightValue.Parent = HeightContainer
-
-local HeightMinus = Instance.new("TextButton")
-HeightMinus.Size = UDim2.new(0, 30, 0, 25)
-HeightMinus.Position = UDim2.new(0.55, 0, 0, 0)
-HeightMinus.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-HeightMinus.BorderSizePixel = 0
-HeightMinus.Text = "−"
-HeightMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
-HeightMinus.Font = Enum.Font.GothamBold
-HeightMinus.TextSize = 16
-HeightMinus.Parent = HeightContainer
-
-local HeightPlus = Instance.new("TextButton")
-HeightPlus.Size = UDim2.new(0, 30, 0, 25)
-HeightPlus.Position = UDim2.new(0.8, 0, 0, 0)
-HeightPlus.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-HeightPlus.BorderSizePixel = 0
-HeightPlus.Text = "+"
-HeightPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
-HeightPlus.Font = Enum.Font.GothamBold
-HeightPlus.TextSize = 16
-HeightPlus.Parent = HeightContainer
-
--- Action Buttons Section
-local ActionSection = Instance.new("Frame")
-ActionSection.Size = UDim2.new(1, -20, 0, 50)
-ActionSection.Position = UDim2.new(0, 10, 1, -60)
-ActionSection.BackgroundTransparency = 1
-ActionSection.Parent = ControlSection
-
-local StickButton = Instance.new("TextButton")
-StickButton.Size = UDim2.new(0.48, 0, 1, 0)
-StickButton.Position = UDim2.new(0, 0, 0, 0)
-StickButton.BackgroundColor3 = Color3.fromRGB(50, 180, 70)
-StickButton.BorderSizePixel = 0
-StickButton.Text = "STICK"
-StickButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-StickButton.Font = Enum.Font.GothamBold
-StickButton.TextSize = 16
-StickButton.Parent = ActionSection
-
-local UnstickButton = Instance.new("TextButton")
-UnstickButton.Size = UDim2.new(0.48, 0, 1, 0)
-UnstickButton.Position = UDim2.new(0.52, 0, 0, 0)
-UnstickButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
-UnstickButton.BorderSizePixel = 0
-UnstickButton.Text = "UNSTICK"
-UnstickButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-UnstickButton.Font = Enum.Font.GothamBold
-UnstickButton.TextSize = 16
-UnstickButton.Parent = ActionSection
-
--- Variables
-local selectedPlayer = nil
-local sticking = false
-local stickConnection = nil
-local lastHighlight = nil
-local playerButtons = {}
-local searchFilter = ""
-local targetDistance = 4
-local followHeight = 4
-local maxFollowSpeed = 120
-local currentSpeed = 0
-local smoothness = 0.1 -- Smoother transitions
-local lastTargetPosition = nil
-local targetVelocity = Vector3.new(0, 0, 0)
-local predictiveOffset = Vector3.new(0, 0, 0)
-local lastTargetType = "humanoid"
-local smoothTransitionFactor = 0.2 -- For smooth type transitions
-
--- Body parts for movement
-local bodyVelocity = nil
-local bodyGyro = nil
-local antiGravity = nil
-
--- TOUCH-SCREEN DRAGGING FUNCTION
-local function makeDraggableTouch(frame, dragHandle)
-    local dragging = false
-    local dragInput
-    local dragStartPosition
-    local frameStartPosition
+-- Mobile-friendly setting row function
+local function createMobileSettingRow(name, defaultValue, minValue, maxValue, step)
+    local container = Instance.new("Frame")
+    container.Name = name .. "Container"
+    container.Size = UDim2.new(1, 0, 0.33, 0)
+    container.BackgroundTransparency = 1
     
-    local function update(input)
-        local delta = input.Position - dragStartPosition
-        frame.Position = UDim2.new(
-            frameStartPosition.X.Scale,
-            frameStartPosition.X.Offset + delta.X,
-            frameStartPosition.Y.Scale,
-            frameStartPosition.Y.Offset + delta.Y
-        )
-    end
+    local label = Instance.new("TextLabel")
+    label.Name = name .. "Label"
+    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = name .. ": " .. defaultValue
+    label.TextColor3 = ColorPalette.Text
+    label.TextSize = 16
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextYAlignment = Enum.TextYAlignment.Center
+    label.Parent = container
     
-    dragHandle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStartPosition = input.Position
-            frameStartPosition = frame.Position
-            
-            dragInput = input
-            
-            local connection
-            connection = input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                    if connection then
-                        connection:Disconnect()
-                    end
-                end
-            end)
-        end
-    end)
+    local controls = Instance.new("Frame")
+    controls.Name = name .. "Controls"
+    controls.Size = UDim2.new(0.4, 0, 1, 0)
+    controls.Position = UDim2.new(0.6, 0, 0, 0)
+    controls.BackgroundTransparency = 1
+    controls.Parent = container
     
-    dragHandle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
+    local minusBtn = Instance.new("TextButton")
+    minusBtn.Name = name .. "Minus"
+    minusBtn.Size = UDim2.new(0.4, 0, 0.8, 0)
+    minusBtn.Position = UDim2.new(0, 0, 0.1, 0)
+    minusBtn.BackgroundColor3 = ColorPalette.ButtonNormal
+    minusBtn.Text = "-"
+    minusBtn.TextColor3 = ColorPalette.Text
+    minusBtn.TextSize = 24
+    minusBtn.Font = Enum.Font.GothamBold
     
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input == dragInput) then
-            update(input)
-        end
-    end)
+    local minusCorner = Instance.new("UICorner")
+    minusCorner.CornerRadius = UDim.new(0, 8)
+    minusCorner.Parent = minusBtn
+    
+    local plusBtn = Instance.new("TextButton")
+    plusBtn.Name = name .. "Plus"
+    plusBtn.Size = UDim2.new(0.4, 0, 0.8, 0)
+    plusBtn.Position = UDim2.new(0.6, 0, 0.1, 0)
+    plusBtn.BackgroundColor3 = ColorPalette.ButtonNormal
+    plusBtn.Text = "+"
+    plusBtn.TextColor3 = ColorPalette.Text
+    plusBtn.TextSize = 24
+    plusBtn.Font = Enum.Font.GothamBold
+    
+    local plusCorner = Instance.new("UICorner")
+    plusCorner.CornerRadius = UDim.new(0, 8)
+    plusCorner.Parent = plusBtn
+    
+    minusBtn.Parent = controls
+    plusBtn.Parent = controls
+    
+    return container, label, minusBtn, plusBtn
 end
 
--- Function to get ground height at position
-local function getGroundHeight(position)
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.IgnoreWater = true
-    
-    local rayOrigin = Vector3.new(position.X, position.Y + 100, position.Z)
-    local rayDirection = Vector3.new(0, -200, 0)
-    local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-    
-    if raycastResult then
-        return raycastResult.Position.Y
-    end
-    
-    return 0
-end
+-- Create settings rows
+local DistanceContainer, DistanceLabel, DistanceMinus, DistancePlus = createMobileSettingRow("Distance", "3", 1, 50, 1)
+DistanceContainer.Position = UDim2.new(0, 0, 0, 0)
 
--- IMPROVED: Enable Flying Mode with No-Clip
-local function enableFlyingMode(character)
-    if not character then return end
-    
-    -- Remove collision from all parts (No-Clip)
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
-        end
-    end
-    
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    if humanoidRootPart then
-        -- Clean up old movers
-        if bodyVelocity then bodyVelocity:Destroy() end
-        if bodyGyro then bodyGyro:Destroy() end
-        if antiGravity then antiGravity:Destroy() end
-        
-        -- Create BodyVelocity for movement
-        bodyVelocity = Instance.new("BodyVelocity")
-        bodyVelocity.Name = "FollowBodyVelocity"
-        bodyVelocity.MaxForce = Vector3.new(40000, 40000, 40000) -- Force in all directions
-        bodyVelocity.P = 8000 -- Stronger for better control
-        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        bodyVelocity.Parent = humanoidRootPart
-        
-        -- Create BodyGyro for stability
-        bodyGyro = Instance.new("BodyGyro")
-        bodyGyro.Name = "FollowBodyGyro"
-        bodyGyro.MaxTorque = Vector3.new(40000, 40000, 40000)
-        bodyGyro.P = 5000
-        bodyGyro.D = 800
-        bodyGyro.CFrame = humanoidRootPart.CFrame
-        bodyGyro.Parent = humanoidRootPart
-        
-        -- Create BodyPosition for height control (better than BodyForce)
-        local bodyPosition = Instance.new("BodyPosition")
-        bodyPosition.Name = "FollowBodyPosition"
-        bodyPosition.MaxForce = Vector3.new(0, 40000, 0)
-        bodyPosition.P = 10000
-        bodyPosition.D = 1000
-        bodyPosition.Position = humanoidRootPart.Position
-        bodyPosition.Parent = humanoidRootPart
-        
-        -- Create BodyForce for anti-gravity
-        antiGravity = Instance.new("BodyForce")
-        antiGravity.Name = "AntiGravityForce"
-        antiGravity.Force = Vector3.new(0, character:GetMass() * workspace.Gravity * 0.8, 0) -- 80% gravity
-        antiGravity.Parent = humanoidRootPart
-    end
-    
-    StatusLabel.Text = "Status: Flying & No-Clip ON"
-    InfoLabel.Text = string.format("Mode: Flying (No-Clip)\nDistance: %d | Height: %d", targetDistance, followHeight)
-end
+local HeightContainer, HeightLabel, HeightMinus, HeightPlus = createMobileSettingRow("Height", "4", 1, 50, 1)
+HeightContainer.Position = UDim2.new(0, 0, 0.33, 0)
 
--- Disable Flying Mode
-local function disableFlyingMode(character)
-    if not character then return end
-    
-    -- Restore collision
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = true
-        end
-    end
-    
-    -- Remove movement controllers
-    if bodyVelocity then
-        bodyVelocity:Destroy()
-        bodyVelocity = nil
-    end
-    
-    if bodyGyro then
-        bodyGyro:Destroy()
-        bodyGyro = nil
-    end
-    
-    if antiGravity then
-        antiGravity:Destroy()
-        antiGravity = nil
-    end
-    
-    -- Remove BodyPosition
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    if humanoidRootPart then
-        local bodyPosition = humanoidRootPart:FindFirstChild("FollowBodyPosition")
-        if bodyPosition then
-            bodyPosition:Destroy()
-        end
-    end
-    
-    InfoLabel.Text = string.format("Mode: Ground Follow\nDistance: %d | Height: %d", targetDistance, followHeight)
-end
+local MaxSpeedContainer, MaxSpeedLabel, MaxSpeedMinus, MaxSpeedPlus = createMobileSettingRow("Max Speed", "300", 10, 500, 10)
+MaxSpeedContainer.Position = UDim2.new(0, 0, 0.66, 0)
 
--- IMPROVED: Get target's primary part with BETTER vehicle detection
-local function getTargetPrimaryPart(character)
-    if not character then return nil, "unknown" end
-    
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    local isInVehicle = false
-    local vehiclePart = nil
-    
-    -- Check if humanoid is in a vehicle seat
-    if humanoid and humanoid.SeatPart then
-        isInVehicle = true
-        vehiclePart = humanoid.SeatPart
-        
-        -- Get the vehicle model (could be the seat's parent or the seat itself)
-        local vehicle = vehiclePart.Parent
-        
-        -- Look for common vehicle root parts in order of preference
-        local possibleRoots = {
-            vehicle:FindFirstChild("AssemblyRootPart"),
-            vehicle:FindFirstChild("VehicleSeat"),
-            vehicle:FindFirstChild("Seat"),
-            vehicle.PrimaryPart,
-            vehiclePart -- Fallback to the seat itself
-        }
-        
-        for _, root in ipairs(possibleRoots) do
-            if root and root:IsA("BasePart") then
-                return root, "vehicle"
-            end
-        end
-        
-        -- If no root found but we have a seat, return the seat
-        return vehiclePart, "vehicle"
-    end
-    
-    -- Check for other vehicle indicators (VehicleController, VehicleSeat without humanoid)
-    if not isInVehicle then
-        -- Look for VehicleSeat that might have the player sitting but no humanoid
-        for _, part in pairs(character:GetChildren()) do
-            if part:IsA("VehicleSeat") or (part:IsA("Seat") and part:FindFirstChild("Occupant")) then
-                isInVehicle = true
-                return part, "vehicle"
-            end
-        end
-    end
-    
-    -- If no vehicle found, use humanoid parts
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if rootPart then return rootPart, "humanoid" end
-    
-    local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
-    if torso then return torso, "humanoid" end
-    
-    for _, part in pairs(character:GetChildren()) do
-        if part:IsA("BasePart") then
-            return part, "humanoid"
-        end
-    end
-    
-    return nil, "unknown"
-end
+DistanceContainer.Parent = SettingsGrid
+HeightContainer.Parent = SettingsGrid
+MaxSpeedContainer.Parent = SettingsGrid
+SettingsSection.Parent = MainContent
 
--- Calculate dynamic follow speed with smooth transitions
-local function calculateDynamicSpeed(targetVelocity, targetType, targetDistance)
-    local baseSpeed = 30
-    local velocityMagnitude = targetVelocity.Magnitude
-    
-    -- Adjust base speed based on target type
-    if targetType == "vehicle" then
-        baseSpeed = 50 -- Faster for vehicles
-    end
-    
-    -- Add target's velocity to our speed
-    local additionalSpeed = velocityMagnitude * 1.5
-    
-    -- Adjust speed based on distance
-    local distanceFactor = math.clamp(targetDistance / 10, 0.5, 2.0)
-    
-    -- Limit maximum speed
-    local calculatedSpeed = math.min(baseSpeed + additionalSpeed, maxFollowSpeed) * distanceFactor
-    
-    -- Smooth speed transition with type awareness
-    if currentSpeed == 0 then
-        currentSpeed = calculatedSpeed
-    else
-        -- If target type changed, adjust speed more quickly
-        if targetType ~= lastTargetType then
-            smoothness = 0.3 -- Faster adjustment for type change
-        else
-            smoothness = 0.1 -- Normal smoothness
-        end
-        
-        currentSpeed = currentSpeed + (calculatedSpeed - currentSpeed) * smoothness
-    end
-    
-    lastTargetType = targetType
-    return currentSpeed
-end
+MainFrame.Parent = ScreenGui
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Calculate predictive offset with smoothing
-local function calculatePredictiveOffset(targetVelocity, deltaTime, targetType)
-    -- Predict where target will be based on current velocity
-    local lookAheadTime = targetType == "vehicle" and 0.4 or 0.3 -- Longer prediction for vehicles
-    
-    local prediction = targetVelocity * lookAheadTime
-    
-    -- Clamp prediction to reasonable distance
-    local maxPrediction = targetType == "vehicle" and 25 or 20
-    if prediction.Magnitude > maxPrediction then
-        prediction = prediction.Unit * maxPrediction
-    end
-    
-    -- Smoothly transition to new prediction
-    local transitionSpeed = targetType == "vehicle" and 0.15 or 0.1
-    predictiveOffset = predictiveOffset + (prediction - predictiveOffset) * transitionSpeed
-    
-    return predictiveOffset
-end
+-- ===================== ADVANCED FOLLOW LOGIC =====================
 
--- SMART stick follow function with improved vehicle handling
-local function smartStickFollow()
-    if not sticking then return end
-    if not selectedPlayer then 
-        unstickFromPlayer()
-        return 
-    end
-    
-    local character = LocalPlayer.Character
-    local targetCharacter = selectedPlayer.Character
-    
-    if not character or not targetCharacter then 
-        StatusLabel.Text = "Status: Character missing"
-        return 
-    end
-    
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local targetPrimary, targetType = getTargetPrimaryPart(targetCharacter)
-    
-    if not rootPart or not targetPrimary then 
-        StatusLabel.Text = "Status: Cannot find target"
-        return 
-    end
-    
-    local currentTargetPosition = targetPrimary.Position
-    local deltaTime = RunService.Heartbeat:Wait()
-    
-    -- Calculate target velocity with smoothing
-    if lastTargetPosition then
-        local positionDelta = currentTargetPosition - lastTargetPosition
-        local newVelocity = positionDelta / deltaTime
-        
-        -- Smooth velocity changes
-        targetVelocity = targetVelocity:Lerp(newVelocity, 0.3)
-    end
-    lastTargetPosition = currentTargetPosition
-    
-    local speed = calculateDynamicSpeed(targetVelocity, targetType, targetDistance)
-    local prediction = calculatePredictiveOffset(targetVelocity, deltaTime, targetType)
-    
-    local targetCFrame = targetPrimary.CFrame
-    
-    -- Adjust parameters based on target type
-    local adjustedHeight = followHeight
-    local adjustedDistance = targetDistance
-    
-    if targetType == "vehicle" then
-        -- Vehicles: Higher and slightly further away
-        adjustedHeight = followHeight + 2
-        adjustedDistance = targetDistance + 2
-    end
-    
-    local baseOffset = Vector3.new(0, adjustedHeight, -adjustedDistance)
-    local desiredLocalPosition = baseOffset + prediction
-    local desiredWorldPosition = targetCFrame:PointToWorldSpace(desiredLocalPosition)
-    
-    -- Enhanced anti-baseplate protection
-    local targetGroundHeight = getGroundHeight(currentTargetPosition)
-    local ourGroundHeight = getGroundHeight(desiredWorldPosition)
-    
-    -- Find highest ground point
-    local highestGround = math.max(targetGroundHeight, ourGroundHeight)
-    local minSafeHeight = highestGround + adjustedHeight + 2 -- Extra safety margin
-    
-    -- If target is flying/falling, adjust to their height
-    if currentTargetPosition.Y > targetGroundHeight + 10 then
-        minSafeHeight = math.max(minSafeHeight, currentTargetPosition.Y + adjustedHeight - 5)
-    end
-    
-    -- Ensure we never go too low
-    local absoluteMinHeight = 5 -- Baseplate level + 5 studs
-    minSafeHeight = math.max(minSafeHeight, absoluteMinHeight)
-    
-    if desiredWorldPosition.Y < minSafeHeight then
-        desiredWorldPosition = Vector3.new(
-            desiredWorldPosition.X,
-            minSafeHeight,
-            desiredWorldPosition.Z
-        )
-    end
-    
-    -- Calculate direction to desired position
-    local direction = desiredWorldPosition - rootPart.Position
-    local distance = direction.Magnitude
-    
-    -- Adjust vertical position smoothly using BodyPosition
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    if humanoidRootPart then
-        local bodyPosition = humanoidRootPart:FindFirstChild("FollowBodyPosition")
-        if bodyPosition then
-            -- Only adjust Y position, X and Z are handled by BodyVelocity
-            local targetYPosition = desiredWorldPosition.Y
-            local currentYPosition = humanoidRootPart.Position.Y
-            local yDifference = targetYPosition - currentYPosition
-            
-            -- Smooth vertical movement
-            if math.abs(yDifference) > 0.5 then
-                local verticalSpeed = math.clamp(yDifference * 2, -15, 15)
-                bodyPosition.Position = Vector3.new(
-                    humanoidRootPart.Position.X,
-                    humanoidRootPart.Position.Y + verticalSpeed * deltaTime,
-                    humanoidRootPart.Position.Z
-                )
-            end
-        end
-    end
-    
-    -- Calculate horizontal movement
-    local horizontalDirection = Vector3.new(direction.X, 0, direction.Z)
-    local horizontalDistance = horizontalDirection.Magnitude
-    
-    -- Adaptive speed based on distance
-    local adaptiveSpeed = speed
-    if horizontalDistance < adjustedDistance * 0.3 then
-        adaptiveSpeed = speed * 0.3 -- Slow down when very close
-    elseif horizontalDistance < adjustedDistance then
-        adaptiveSpeed = speed * (horizontalDistance / adjustedDistance) -- Scale speed with distance
-    elseif horizontalDistance > adjustedDistance * 2 then
-        adaptiveSpeed = speed * 1.5 -- Speed up if far away
-    end
-    
-    adaptiveSpeed = math.clamp(adaptiveSpeed, 5, maxFollowSpeed)
-    
-    -- Apply horizontal movement
-    if horizontalDistance > 0.5 then
-        local velocityDirection = horizontalDirection.Unit
-        
-        -- Anti-overshoot damping
-        if horizontalDistance < 3 then
-            local dampingFactor = horizontalDistance / 3
-            adaptiveSpeed = adaptiveSpeed * dampingFactor
-        end
-        
-        local desiredVelocity = velocityDirection * adaptiveSpeed
-        
-        if bodyVelocity then
-            bodyVelocity.Velocity = Vector3.new(desiredVelocity.X, 0, desiredVelocity.Z)
-        end
-        
-        -- Face the target (horizontal only)
-        if bodyGyro then
-            local lookAtPosition = Vector3.new(targetPrimary.Position.X, rootPart.Position.Y, targetPrimary.Position.Z)
-            local lookAtCFrame = CFrame.new(rootPart.Position, lookAtPosition)
-            bodyGyro.CFrame = lookAtCFrame
-        end
-    else
-        -- Maintain position
-        if bodyVelocity then
-            bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        end
-    end
-    
-    -- Update display
-    local statusType = targetType == "vehicle" and "VEHICLE" or "PERSON"
-    InfoLabel.Text = string.format("Mode: Flying (No-Clip)\nFollowing: %s | Distance: %d", statusType, targetDistance)
-    
-    StatusLabel.Text = string.format("Status: STICKING (%s)\nHoriz. Distance: %.1f | Speed: %.1f", 
-        selectedPlayer.DisplayName, horizontalDistance, adaptiveSpeed)
-    StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-end
-
--- Start sticking to player with teleport
-local function stickToPlayer()
-    if sticking then 
-        StatusLabel.Text = "Status: Already sticking!"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
-        return 
-    end
-    
-    if not selectedPlayer then 
-        StatusLabel.Text = "Status: Select a player first!"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
-        return 
-    end
-    
-    StatusLabel.Text = "Status: Initializing..."
-    StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
-    
-    local character = LocalPlayer.Character
-    if not character then
-        character = LocalPlayer.CharacterAdded:Wait()
-        task.wait(0.5)
-    end
-    
-    local targetCharacter = selectedPlayer.Character
-    if not targetCharacter then
-        StatusLabel.Text = "Status: Target has no character"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
-        return
-    end
-    
-    local targetPrimary, targetType = getTargetPrimaryPart(targetCharacter)
-    if not targetPrimary then
-        StatusLabel.Text = "Status: Cannot find target body"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
-        return
-    end
-    
-    -- TELEPORT to target first
-    StatusLabel.Text = "Status: Teleporting..."
-    StatusLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
-    
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if rootPart then
-        -- Calculate teleport position (behind target at current settings)
-        local teleportOffset = CFrame.new(0, followHeight, -targetDistance)
-        local teleportPosition = targetPrimary.CFrame:ToWorldSpace(teleportOffset).Position
-        
-        -- Ensure we're above ground
-        local groundHeight = getGroundHeight(teleportPosition)
-        if teleportPosition.Y < groundHeight + 5 then
-            teleportPosition = Vector3.new(teleportPosition.X, groundHeight + 5, teleportPosition.Z)
-        end
-        
-        -- Teleport
-        character:PivotTo(CFrame.new(teleportPosition))
-        task.wait(0.1)
-    end
-    
-    -- Enable flying mode (No-Clip)
-    enableFlyingMode(character)
-    
-    sticking = true
-    lastTargetPosition = nil
-    predictiveOffset = Vector3.new(0, 0, 0)
-    currentSpeed = 0
-    
-    if stickConnection then
-        stickConnection:Disconnect()
-    end
-    
-    stickConnection = RunService.Heartbeat:Connect(function()
-        smartStickFollow()
-    end)
-    
-    StickButton.BackgroundColor3 = Color3.fromRGB(30, 150, 50)
-    UnstickButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
-    
-    StatusLabel.Text = "Status: STICKING ACTIVE"
-    StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-end
-
--- Stop sticking to player
-local function unstickFromPlayer()
-    sticking = false
-    currentSpeed = 0
-    
-    if stickConnection then
-        stickConnection:Disconnect()
-        stickConnection = nil
-    end
-    
-    local character = LocalPlayer.Character
-    if character then
-        disableFlyingMode(character)
-    end
-    
-    StickButton.BackgroundColor3 = Color3.fromRGB(50, 180, 70)
-    UnstickButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
-    
-    StatusLabel.Text = "Status: Idle"
-    StatusLabel.TextColor3 = Color3.fromRGB(150, 200, 150)
-    InfoLabel.Text = string.format("Mode: Ground Follow\nDistance: %d | Height: %d", targetDistance, followHeight)
-end
-
--- Update player list with search - CLEARLY SHOW BOTH NAMES
-local function updatePlayerList()
-    for _, button in pairs(playerButtons) do
-        button:Destroy()
-    end
-    playerButtons = {}
-    
+-- Get ALL players in server
+local function getAllPlayers()
+    local allPlayers = {}
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
-            if searchFilter == "" or 
-               string.find(string.lower(player.Name), string.lower(searchFilter)) or
-               string.find(string.lower(player.DisplayName), string.lower(searchFilter)) then
-                
-                local button = TemplateButton:Clone()
-                button.Name = "PlayerButton_" .. player.Name
-                button.Visible = true
-                button.BackgroundColor3 = selectedPlayer == player and Color3.fromRGB(80, 120, 200) or Color3.fromRGB(50, 50, 55)
-                button.Parent = PlayerListFrame
-                table.insert(playerButtons, button)
-                
-                -- Username Container
-                local usernameContainer = Instance.new("Frame")
-                usernameContainer.Size = UDim2.new(1, -10, 0, 25)
-                usernameContainer.Position = UDim2.new(0, 5, 0, 5)
-                usernameContainer.BackgroundTransparency = 1
-                usernameContainer.Parent = button
-                
-                local usernameLabel = Instance.new("TextLabel")
-                usernameLabel.Size = UDim2.new(0.4, 0, 1, 0)
-                usernameLabel.Position = UDim2.new(0, 0, 0, 0)
-                usernameLabel.BackgroundTransparency = 1
-                usernameLabel.Text = "Username:"
-                usernameLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-                usernameLabel.Font = Enum.Font.Gotham
-                usernameLabel.TextSize = 11
-                usernameLabel.TextXAlignment = Enum.TextXAlignment.Left
-                usernameLabel.Parent = usernameContainer
-                
-                local usernameValue = Instance.new("TextLabel")
-                usernameValue.Size = UDim2.new(0.6, 0, 1, 0)
-                usernameValue.Position = UDim2.new(0.4, 0, 0, 0)
-                usernameValue.BackgroundTransparency = 1
-                usernameValue.Text = player.Name
-                usernameValue.TextColor3 = Color3.fromRGB(180, 180, 255)
-                usernameValue.Font = Enum.Font.GothamBold
-                usernameValue.TextSize = 12
-                usernameValue.TextXAlignment = Enum.TextXAlignment.Left
-                usernameValue.TextTruncate = Enum.TextTruncate.AtEnd
-                usernameValue.Parent = usernameContainer
-                
-                -- Display Name Container
-                local displayNameContainer = Instance.new("Frame")
-                displayNameContainer.Size = UDim2.new(1, -10, 0, 25)
-                displayNameContainer.Position = UDim2.new(0, 5, 0, 30)
-                displayNameContainer.BackgroundTransparency = 1
-                displayNameContainer.Parent = button
-                
-                local displayNameLabel = Instance.new("TextLabel")
-                displayNameLabel.Size = UDim2.new(0.4, 0, 1, 0)
-                displayNameLabel.Position = UDim2.new(0, 0, 0, 0)
-                displayNameLabel.BackgroundTransparency = 1
-                displayNameLabel.Text = "Nickname:"
-                displayNameLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-                displayNameLabel.Font = Enum.Font.Gotham
-                displayNameLabel.TextSize = 11
-                displayNameLabel.TextXAlignment = Enum.TextXAlignment.Left
-                displayNameLabel.Parent = displayNameContainer
-                
-                local displayNameValue = Instance.new("TextLabel")
-                displayNameValue.Size = UDim2.new(0.6, 0, 1, 0)
-                displayNameValue.Position = UDim2.new(0.4, 0, 0, 0)
-                displayNameValue.BackgroundTransparency = 1
-                displayNameValue.Text = player.DisplayName
-                displayNameValue.TextColor3 = Color3.fromRGB(255, 180, 180)
-                displayNameValue.Font = Enum.Font.GothamBold
-                displayNameValue.TextSize = 12
-                displayNameValue.TextXAlignment = Enum.TextXAlignment.Left
-                displayNameValue.TextTruncate = Enum.TextTruncate.AtEnd
-                displayNameValue.Parent = displayNameContainer
-                
-                -- Vehicle indicator
-                local vehicleIndicator = Instance.new("Frame")
-                vehicleIndicator.Size = UDim2.new(0, 10, 0, 10)
-                vehicleIndicator.Position = UDim2.new(1, -15, 0.5, -5)
-                vehicleIndicator.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-                vehicleIndicator.BorderSizePixel = 0
-                vehicleIndicator.Parent = button
-                
-                local indicatorLabel = Instance.new("TextLabel")
-                indicatorLabel.Size = UDim2.new(1, 0, 1, 0)
-                indicatorLabel.BackgroundTransparency = 1
-                indicatorLabel.Text = "V"
-                indicatorLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                indicatorLabel.Font = Enum.Font.GothamBold
-                indicatorLabel.TextSize = 8
-                indicatorLabel.Parent = vehicleIndicator
-                
-                -- Monitor player's vehicle status
-                local function updateIndicator()
-                    if player.Character then
-                        local _, targetType = getTargetPrimaryPart(player.Character)
-                        if targetType == "vehicle" then
-                            vehicleIndicator.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
-                            indicatorLabel.Text = "V"
-                        else
-                            vehicleIndicator.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-                            indicatorLabel.Text = "P"
-                        end
-                    end
-                end
-                
-                player.CharacterAdded:Connect(updateIndicator)
-                if player.Character then
-                    updateIndicator()
-                end
-                
-                if selectedPlayer == player then
-                    lastHighlight = button
-                end
-                
-                button.MouseButton1Click:Connect(function()
-                    if lastHighlight then
-                        lastHighlight.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-                    end
-                    
-                    selectedPlayer = player
-                    lastHighlight = button
-                    button.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
-                    
-                    -- Update selected player display with both names
-                    SelectedPlayerLabel.Text = string.format("Selected Player:\nUsername: %s\nNickname: %s", 
-                        player.Name, player.DisplayName)
-                    StatusLabel.Text = "Status: Ready to stick"
-                    StatusLabel.TextColor3 = Color3.fromRGB(150, 200, 150)
-                    
-                    -- Update vehicle status
-                    if player.Character then
-                        local _, targetType = getTargetPrimaryPart(player.Character)
-                        local statusText = targetType == "vehicle" and "In Vehicle" or "On Foot"
-                        StatusLabel.Text = string.format("Status: Ready (%s)", statusText)
-                    end
-                end)
-            end
+            table.insert(allPlayers, player)
         end
+    end
+    return allPlayers
+end
+
+-- Create mobile-optimized player entry
+local function createPlayerEntry(player)
+    local PlayerEntry = Instance.new("Frame")
+    PlayerEntry.Name = player.Name
+    PlayerEntry.Size = UDim2.new(1, 0, 0, 60)
+    PlayerEntry.BackgroundColor3 = ColorPalette.BackgroundDark
+    PlayerEntry.BackgroundTransparency = 0.5
+    
+    local EntryCorner = Instance.new("UICorner")
+    EntryCorner.CornerRadius = UDim.new(0, 10)
+    EntryCorner.Parent = PlayerEntry
+    
+    -- Left side: Player name and username
+    local NameContainer = Instance.new("Frame")
+    NameContainer.Name = "NameContainer"
+    NameContainer.Size = UDim2.new(0.5, 0, 1, 0)
+    NameContainer.BackgroundTransparency = 1
+    NameContainer.Parent = PlayerEntry
+    
+    local PlayerNameLabel = Instance.new("TextLabel")
+    PlayerNameLabel.Name = "PlayerNameLabel"
+    PlayerNameLabel.Size = UDim2.new(1, -10, 0.6, 0)
+    PlayerNameLabel.Position = UDim2.new(0, 5, 0.1, 0)
+    PlayerNameLabel.BackgroundTransparency = 1
+    PlayerNameLabel.Text = player.DisplayName
+    PlayerNameLabel.TextColor3 = ColorPalette.Text
+    PlayerNameLabel.TextSize = 16
+    PlayerNameLabel.Font = Enum.Font.GothamMedium
+    PlayerNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    PlayerNameLabel.Parent = NameContainer
+    
+    local UserNameLabel = Instance.new("TextLabel")
+    UserNameLabel.Name = "UserNameLabel"
+    UserNameLabel.Size = UDim2.new(1, -10, 0.4, 0)
+    UserNameLabel.Position = UDim2.new(0, 5, 0.6, 0)
+    UserNameLabel.BackgroundTransparency = 1
+    UserNameLabel.Text = "@" .. player.Name
+    UserNameLabel.TextColor3 = ColorPalette.TextMuted
+    UserNameLabel.TextSize = 12
+    UserNameLabel.Font = Enum.Font.Gotham
+    UserNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    UserNameLabel.Parent = NameContainer
+    
+    -- Right side: Nickname input
+    local NicknameContainer = Instance.new("Frame")
+    NicknameContainer.Name = "NicknameContainer"
+    NicknameContainer.Size = UDim2.new(0.5, 0, 1, 0)
+    NicknameContainer.Position = UDim2.new(0.5, 0, 0, 0)
+    NicknameContainer.BackgroundTransparency = 1
+    NicknameContainer.Parent = PlayerEntry
+    
+    local NicknameLabel = Instance.new("TextLabel")
+    NicknameLabel.Name = "NicknameLabel"
+    NicknameLabel.Size = UDim2.new(1, 0, 0.3, 0)
+    NicknameLabel.Position = UDim2.new(0, 0, 0.1, 0)
+    NicknameLabel.BackgroundTransparency = 1
+    NicknameLabel.Text = "Nickname:"
+    NicknameLabel.TextColor3 = ColorPalette.TextMuted
+    NicknameLabel.TextSize = 12
+    NicknameLabel.Font = Enum.Font.Gotham
+    NicknameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    NicknameLabel.Parent = NicknameContainer
+    
+    local NicknameBox = Instance.new("TextBox")
+    NicknameBox.Name = "NicknameBox"
+    NicknameBox.Size = UDim2.new(0.9, 0, 0.5, 0)
+    NicknameBox.Position = UDim2.new(0.05, 0, 0.4, 0)
+    NicknameBox.BackgroundColor3 = ColorPalette.Background
+    NicknameBox.TextColor3 = ColorPalette.Text
+    NicknameBox.TextSize = 14
+    NicknameBox.Font = Enum.Font.Gotham
+    NicknameBox.PlaceholderText = "Enter nickname"
+    NicknameBox.PlaceholderColor3 = ColorPalette.TextMuted
+    NicknameBox.Text = PlayerNicknames[player.Name] or ""
+    NicknameBox.ClearTextOnFocus = false
+    
+    local NicknameBoxCorner = Instance.new("UICorner")
+    NicknameBoxCorner.CornerRadius = UDim.new(0, 6)
+    NicknameBoxCorner.Parent = NicknameBox
+    
+    NicknameBox.FocusLost:Connect(function()
+        local newNickname = NicknameBox.Text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+        if newNickname == "" then
+            PlayerNicknames[player.Name] = nil
+            NicknameBox.Text = ""
+        else
+            PlayerNicknames[player.Name] = newNickname
+            NicknameBox.Text = newNickname
+        end
+    end)
+    
+    NicknameBox.Parent = NicknameContainer
+    
+    -- Touch button for selection
+    local TouchButton = Instance.new("TextButton")
+    TouchButton.Name = "TouchButton"
+    TouchButton.Size = UDim2.new(1, 0, 1, 0)
+    TouchButton.BackgroundTransparency = 1
+    TouchButton.Text = ""
+    TouchButton.ZIndex = 2
+    TouchButton.Parent = PlayerEntry
+    
+    TouchButton.MouseButton1Click:Connect(function()
+        -- Deselect previous
+        if SelectedPlayerButton and SelectedPlayerButton ~= PlayerEntry then
+            SelectedPlayerButton.BackgroundColor3 = ColorPalette.BackgroundDark
+            SelectedPlayerButton.BackgroundTransparency = 0.5
+        end
+        
+        -- Select new
+        SelectedPlayerButton = PlayerEntry
+        SelectedPlayerButton.BackgroundColor3 = ColorPalette.Selected
+        SelectedPlayerButton.BackgroundTransparency = 0.3
+        
+        CurrentTarget = player
+        local displayName = PlayerNicknames[player.Name] or player.DisplayName
+        SelectedLabel.Text = "Selected: " .. displayName
+        StatusLabel.Text = "Status: Ready to follow"
+        
+        -- Update Unfollow button appearance
+        UnfollowButton.BackgroundColor3 = ColorPalette.ButtonNormal
+    end)
+    
+    return PlayerEntry
+end
+
+-- Update player list
+local function updatePlayerList()
+    PlayerListContainer:ClearAllChildren()
+    
+    for _, player in pairs(getAllPlayers()) do
+        local playerEntry = createPlayerEntry(player)
+        playerEntry.Parent = PlayerListContainer
     end
 end
 
--- Handle player leaving
-local function handlePlayerLeaving(player)
-    if player == selectedPlayer then
-        selectedPlayer = nil
-        if lastHighlight then
-            lastHighlight.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-            lastHighlight = nil
-        end
-        SelectedPlayerLabel.Text = "Selected: None"
-        unstickFromPlayer()
-        StatusLabel.Text = "Status: Player left game"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
+-- ===================== ADVANCED FOLLOW SYSTEM FUNCTIONS =====================
+
+-- PHYSICS-AWARE ROOT DETECTION
+local function findPhysicsRoot(character)
+    if not character then return nil, false end
+    
+    local isVehicle = false
+    
+    -- Check for vehicle via humanoid seat
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid and humanoid.SeatPart then
+        isVehicle = true
+        local seat = humanoid.SeatPart
         
-        task.delay(3, function()
-            if StatusLabel.Text == "Status: Player left game" then
-                StatusLabel.Text = "Status: Idle"
-                StatusLabel.TextColor3 = Color3.fromRGB(150, 200, 150)
+        -- Find the vehicle model
+        local vehicleModel = seat.Parent
+        if vehicleModel and vehicleModel:IsA("Model") then
+            -- PRIMARY STRATEGY: Find AssemblyRootPart
+            local assemblyRoot = vehicleModel:FindFirstChild("AssemblyRootPart")
+            if assemblyRoot then
+                return assemblyRoot, true, "AssemblyRoot"
+            end
+            
+            -- SECONDARY: Use PrimaryPart if it's authoritative
+            if vehicleModel.PrimaryPart then
+                -- Check if PrimaryPart has physics authority
+                if vehicleModel.PrimaryPart:GetNetworkOwner() == game.Players.LocalPlayer then
+                    return vehicleModel.PrimaryPart, true, "PrimaryPart"
+                end
+                
+                -- Find the part with most mass (likely main body)
+                local maxMass = 0
+                local heaviestPart = nil
+                for _, part in pairs(vehicleModel:GetDescendants()) do
+                    if part:IsA("BasePart") and part.Mass > maxMass then
+                        maxMass = part.Mass
+                        heaviestPart = part
+                    end
+                end
+                if heaviestPart then
+                    return heaviestPart, true, "HeaviestPart"
+                end
+            end
+        end
+        return seat, true, "VehicleSeat"
+    end
+    
+    -- If not in vehicle, use humanoid root
+    if character:FindFirstChild("HumanoidRootPart") then
+        return character.HumanoidRootPart, false, "HumanoidRoot"
+    end
+    
+    return character.PrimaryPart, false, "PrimaryPart"
+end
+
+-- AGGRESSIVE PHYSICS VALIDATION
+local function validatePhysicsRoot(physicsRoot)
+    if not physicsRoot then return false, "No root" end
+    if not physicsRoot:IsDescendantOf(game) then return false, "Not in game" end
+    
+    -- Check for extreme movement (likely teleport or respawn)
+    if LastRootCFrame then
+        local delta = (physicsRoot.Position - LastRootCFrame.Position).Magnitude
+        if delta > MAX_VALID_DELTA then
+            return false, "Excessive delta: " .. math.floor(delta)
+        end
+    end
+    
+    -- Check for impossible speed
+    local speed = physicsRoot.Velocity.Magnitude
+    if speed > MAX_VALID_SPEED then
+        return false, "Impossible speed: " .. math.floor(speed)
+    end
+    
+    -- Check if part is likely decorative (small mass, welded to something else)
+    if physicsRoot.Mass < 0.1 then
+        return false, "Too light: " .. physicsRoot.Mass
+    end
+    
+    return true, "Valid"
+end
+
+-- STABILITY CALCULATION FOR CLEAN LOCK
+local function calculateStability(physicsRoot)
+    local currentTime = tick()
+    local currentPos = physicsRoot.Position
+    local currentVel = physicsRoot.Velocity
+    
+    -- Add to history
+    table.insert(SpeedHistory, 1, currentVel.Magnitude)
+    table.insert(PhysicsStateHistory, 1, {
+        position = currentPos,
+        velocity = currentVel,
+        time = currentTime
+    })
+    
+    -- Trim history
+    if #SpeedHistory > MAX_HISTORY then
+        table.remove(SpeedHistory, MAX_HISTORY + 1)
+    end
+    if #PhysicsStateHistory > MAX_HISTORY then
+        table.remove(PhysicsStateHistory, MAX_HISTORY + 1)
+    end
+    
+    -- Calculate acceleration
+    if #PhysicsStateHistory >= 2 then
+        local deltaTime = PhysicsStateHistory[1].time - PhysicsStateHistory[2].time
+        if deltaTime > 0 then
+            local deltaVel = (PhysicsStateHistory[1].velocity - PhysicsStateHistory[2].velocity).Magnitude
+            local acceleration = deltaVel / deltaTime
+            table.insert(AccelerationHistory, 1, acceleration)
+            
+            -- Calculate jerk (change in acceleration)
+            if #AccelerationHistory >= 2 then
+                local jerk = math.abs(AccelerationHistory[1] - AccelerationHistory[2]) / deltaTime
+                table.insert(JerkHistory, 1, jerk)
+                if #JerkHistory > MAX_HISTORY then
+                    table.remove(JerkHistory, MAX_HISTORY + 1)
+                end
+            end
+        end
+    end
+    
+    if #AccelerationHistory > MAX_HISTORY then
+        table.remove(AccelerationHistory, MAX_HISTORY + 1)
+    end
+    
+    -- Calculate stability score (0-100)
+    local stability = 100
+    
+    -- Penalize for speed variance
+    if #SpeedHistory >= 3 then
+        local avgSpeed = 0
+        for _, s in ipairs(SpeedHistory) do avgSpeed = avgSpeed + s end
+        avgSpeed = avgSpeed / #SpeedHistory
+        
+        local variance = 0
+        for _, s in ipairs(SpeedHistory) do
+            variance = variance + (s - avgSpeed) ^ 2
+        end
+        variance = variance / #SpeedHistory
+        
+        stability = stability - math.min(variance * 10, 50)
+    end
+    
+    -- Penalize for high jerk
+    if #JerkHistory >= 2 then
+        local maxJerk = 0
+        for _, j in ipairs(JerkHistory) do
+            if j > maxJerk then maxJerk = j end
+        end
+        stability = stability - math.min(maxJerk, 50)
+    end
+    
+    stability = math.clamp(stability, 0, 100)
+    StabilityScore = stability
+    
+    return stability
+end
+
+-- DETECT ASSEMBLY CHANGES
+local function detectAssemblyChange(newRoot, isVehicle)
+    if not PhysicsRoot then return true end -- First detection
+    
+    -- Different part instance
+    if newRoot ~= PhysicsRoot then
+        return true
+    end
+    
+    -- Check if root lost parent (respawning, teleporting)
+    if not newRoot:IsDescendantOf(game) then
+        return true
+    end
+    
+    -- Check for ownership change (network)
+    local oldOwner = PhysicsRoot:GetNetworkOwner()
+    local newOwner = newRoot:GetNetworkOwner()
+    if oldOwner ~= newOwner then
+        return true
+    end
+    
+    -- Check for extreme position reset
+    if LastRootCFrame then
+        local delta = (newRoot.Position - LastRootCFrame.Position).Magnitude
+        if delta > 50 then -- Large teleport
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- CLEAN LOCK INITIALIZATION
+local function initializePhysicsLock(physicsRoot)
+    -- Wait for stable frame if possible
+    local startTime = tick()
+    local maxWaitTime = 0.1 -- 100ms max wait
+    
+    while tick() - startTime < maxWaitTime do
+        local stability = calculateStability(physicsRoot)
+        if stability > 70 then -- Wait for decent stability
+            break
+        end
+        RunService.Heartbeat:Wait()
+    end
+    
+    -- Capture reference in local space
+    local localCharacter = LocalPlayer.Character
+    if not localCharacter then return false end
+    
+    local localRoot = localCharacter:FindFirstChild("HumanoidRootPart")
+    if not localRoot then return false end
+    
+    -- Calculate offset in physics root's local space
+    ReferenceOffset = physicsRoot.CFrame:PointToObjectSpace(localRoot.Position)
+    PhysicsRoot = physicsRoot
+    PhysicsRootId = tostring(physicsRoot:GetFullName())
+    LastRootCFrame = physicsRoot.CFrame
+    LastRootVelocity = physicsRoot.Velocity
+    LastLockTime = tick()
+    IsPhysicsLocked = true
+    PhysicsFrameId = 0
+    
+    -- Clear history for fresh start
+    SpeedHistory = {}
+    AccelerationHistory = {}
+    JerkHistory = {}
+    PhysicsStateHistory = {}
+    
+    StatusLabel.Text = "Status: PHYSICS LOCK ACQUIRED"
+    StabilityLabel.Text = "Stability: " .. math.floor(StabilityScore) .. "%"
+    
+    return true
+end
+
+-- METHOD SELECTION WITH AGGRESSIVE LOCKING
+local function selectBestMethod(physicsRoot, isVehicle, currentSpeed, stability)
+    -- FORCE Physics Lock under extreme conditions
+    if isVehicle and currentSpeed > 120 then
+        return "Physics Lock"
+    end
+    
+    if isVehicle and currentSpeed > 80 and stability < 30 then
+        return "Physics Lock" -- Unstable fast vehicle
+    end
+    
+    -- Velocity Match for moderate speeds
+    if currentSpeed > 60 then
+        return "Velocity Match"
+    end
+    
+    -- Smart Follow for normal movement
+    return "Smart Follow"
+end
+
+-- IMPROVED SMART FOLLOW WITH PREDICTION
+local function smartFollowImproved(physicsRoot, isVehicle, currentSpeed)
+    local localCharacter = LocalPlayer.Character
+    if not localCharacter then return end
+    
+    local localRoot = localCharacter:FindFirstChild("HumanoidRootPart")
+    if not localRoot then return end
+    
+    -- Calculate desired position with prediction
+    local targetPos = physicsRoot.Position
+    local targetVel = physicsRoot.Velocity
+    
+    -- Predict future position based on velocity
+    local predictionTime = 0.1 -- 100ms lookahead
+    local predictedPos = targetPos + (targetVel * predictionTime)
+    
+    -- Calculate offset
+    local offset = Vector3.new(0, FollowHeight, -FollowDistance)
+    if isVehicle then
+        offset = Vector3.new(0, FollowHeight, -FollowDistance)
+    else
+        offset = Vector3.new(0, FollowHeight + 2, -FollowDistance)
+    end
+    
+    -- Apply offset in world space
+    local targetCFrame = physicsRoot.CFrame
+    local worldOffset = targetCFrame:VectorToWorldSpace(offset)
+    
+    -- Blend between current and predicted position
+    local desiredPos = (predictedPos * 0.3 + targetPos * 0.7) + worldOffset
+    
+    -- Move with adaptive speed
+    local toTarget = desiredPos - localRoot.Position
+    local distance = toTarget.Magnitude
+    
+    local moveSpeed = math.min(currentSpeed * 1.3, MaxFlySpeed)
+    if distance > 10 then
+        moveSpeed = moveSpeed * 2 -- Catch up faster
+    end
+    
+    localRoot.Velocity = toTarget.Unit * moveSpeed
+    
+    -- Match rotation
+    localRoot.CFrame = CFrame.new(localRoot.Position, physicsRoot.Position)
+end
+
+-- VELOCITY MATCH WITH ERROR CORRECTION
+local function velocityMatchImproved(physicsRoot, isVehicle, currentSpeed)
+    local localCharacter = LocalPlayer.Character
+    if not localCharacter then return end
+    
+    local localRoot = localCharacter:FindFirstChild("HumanoidRootPart")
+    if not localRoot then return end
+    
+    -- Match target velocity exactly
+    local targetVel = physicsRoot.Velocity
+    local targetCFrame = physicsRoot.CFrame
+    
+    -- Calculate desired position with offset
+    local offset = Vector3.new(0, FollowHeight, -FollowDistance)
+    if isVehicle then
+        offset = Vector3.new(0, FollowHeight, -FollowDistance)
+    else
+        offset = Vector3.new(0, FollowHeight + 2, -FollowDistance)
+    end
+    
+    local worldOffset = targetCFrame:VectorToWorldSpace(offset)
+    local desiredPos = physicsRoot.Position + worldOffset
+    
+    -- Position correction
+    local posError = desiredPos - localRoot.Position
+    local errorMagnitude = posError.Magnitude
+    
+    -- Blend between velocity matching and position correction
+    local correctionSpeed = math.min(errorMagnitude * 5, MaxFlySpeed)
+    local correctionVec = posError.Unit * correctionSpeed
+    
+    local blendFactor = math.clamp(errorMagnitude / 10, 0, 1)
+    localRoot.Velocity = targetVel * (1 - blendFactor) + correctionVec * blendFactor
+    
+    -- Match rotation
+    localRoot.CFrame = CFrame.new(localRoot.Position, physicsRoot.Position)
+end
+
+-- ULTIMATE PHYSICS LOCK WITH VALIDATION
+local function physicsLockUltimate(physicsRoot, isVehicle)
+    local localCharacter = LocalPlayer.Character
+    if not localCharacter then return end
+    
+    local localRoot = localCharacter:FindFirstChild("HumanoidRootPart")
+    if not localRoot then return end
+    
+    PhysicsFrameId = PhysicsFrameId + 1
+    
+    -- AGGRESSIVE VALIDATION EVERY FRAME
+    local isValid, reason = validatePhysicsRoot(physicsRoot)
+    if not isValid then
+        StatusLabel.Text = "Status: VALIDATION FAILED - " .. reason
+        IsPhysicsLocked = false
+        return
+    end
+    
+    -- DETECT ASSEMBLY CHANGE
+    if detectAssemblyChange(physicsRoot, isVehicle) then
+        StatusLabel.Text = "Status: ASSEMBLY CHANGE DETECTED"
+        IsPhysicsLocked = false
+        AssemblyChangeDetected = true
+        return
+    end
+    
+    -- RE-INITIALIZE IF NEEDED
+    if not IsPhysicsLocked or AssemblyChangeDetected then
+        if tick() - LastLockTime > REBIND_COOLDOWN then
+            if initializePhysicsLock(physicsRoot) then
+                AssemblyChangeDetected = false
+                StatusLabel.Text = "Status: RE-LOCKED"
+            else
+                return
+            end
+        else
+            return -- Still in cooldown
+        end
+    end
+    
+    -- SANITY CHECK: Ensure offset is valid
+    if ReferenceOffset.Magnitude > 100 then
+        ReferenceOffset = Vector3.new(0, FollowHeight, -FollowDistance)
+    end
+    
+    -- CALCULATE NEW POSITION IN PHYSICS ROOT'S FRAME
+    local currentCFrame = physicsRoot.CFrame
+    local newPosition = currentCFrame:PointToWorldSpace(ReferenceOffset)
+    
+    -- VALIDATE POSITION CHANGE
+    if LastRootCFrame then
+        local delta = (currentCFrame.Position - LastRootCFrame.Position).Magnitude
+        if delta > MAX_VALID_DELTA then
+            StatusLabel.Text = "Status: INVALID TELEPORT"
+            IsPhysicsLocked = false
+            return
+        end
+    end
+    
+    -- APPLY POSITION IMMEDIATELY (NO VELOCITY, NO INTERPOLATION)
+    localRoot.CFrame = CFrame.new(newPosition)
+    localRoot.Velocity = Vector3.new(0, 0, 0) -- Zero out velocity
+    
+    -- UPDATE TRACKING
+    LastRootCFrame = currentCFrame
+    LastRootVelocity = physicsRoot.Velocity
+    
+    -- Update lock quality display
+    local lockQuality = 100 - math.min(StabilityScore, 100)
+    LockQualityLabel.Text = "Lock: " .. math.floor(lockQuality) .. "%"
+end
+
+-- MAIN HYBRID FOLLOW FUNCTION
+local function hybridFollowUltimate()
+    if not Following or not CurrentTarget or not CurrentTarget.Character then
+        return
+    end
+    
+    local targetCharacter = CurrentTarget.Character
+    local localCharacter = LocalPlayer.Character
+    
+    if not localCharacter then return end
+    
+    -- Find physics root with aggressive validation
+    local physicsRoot, isVehicle, rootType = findPhysicsRoot(targetCharacter)
+    if not physicsRoot then
+        StatusLabel.Text = "Status: NO PHYSICS ROOT"
+        return
+    end
+    
+    -- Validate root every frame
+    local isValid, reason = validatePhysicsRoot(physicsRoot)
+    if not isValid then
+        StatusLabel.Text = "Status: INVALID ROOT - " .. reason
+        return
+    end
+    
+    -- Calculate stability
+    local stability = calculateStability(physicsRoot)
+    local currentSpeed = physicsRoot.Velocity.Magnitude
+    
+    -- Update UI
+    SpeedLabel.Text = "Speed: " .. math.floor(currentSpeed)
+    StabilityLabel.Text = "Stability: " .. math.floor(stability) .. "%"
+    
+    -- Select best method
+    local newMethod = selectBestMethod(physicsRoot, isVehicle, currentSpeed, stability)
+    if newMethod ~= Method then
+        Method = newMethod
+        MethodLabel.Text = "Method: " .. Method
+        
+        -- Reset physics lock if switching away
+        if Method ~= "Physics Lock" then
+            IsPhysicsLocked = false
+            PhysicsRoot = nil
+        end
+    end
+    
+    -- Execute method
+    if Method == "Physics Lock" then
+        physicsLockUltimate(physicsRoot, isVehicle)
+    elseif Method == "Velocity Match" then
+        velocityMatchImproved(physicsRoot, isVehicle, currentSpeed)
+    else -- "Smart Follow"
+        smartFollowImproved(physicsRoot, isVehicle, currentSpeed)
+    end
+end
+
+-- TELEPORT WITH STABILITY CHECK
+local function teleportToTarget()
+    if not CurrentTarget or not CurrentTarget.Character then 
+        return false
+    end
+    
+    local targetCharacter = CurrentTarget.Character
+    local localCharacter = LocalPlayer.Character
+    
+    if not localCharacter then return false end
+    
+    local physicsRoot = findPhysicsRoot(targetCharacter)
+    if not physicsRoot then return false end
+    
+    local localRoot = localCharacter:FindFirstChild("HumanoidRootPart")
+    if not localRoot then return false end
+    
+    -- Wait for stable frame if possible
+    local attempts = 0
+    while attempts < 10 and StabilityScore < 60 do
+        calculateStability(physicsRoot)
+        RunService.Heartbeat:Wait()
+        attempts = attempts + 1
+    end
+    
+    -- Teleport with offset
+    local offset = Vector3.new(0, FollowHeight + 2, -FollowDistance)
+    local worldOffset = physicsRoot.CFrame:VectorToWorldSpace(offset)
+    localRoot.CFrame = CFrame.new(physicsRoot.Position + worldOffset)
+    
+    -- Reset tracking
+    LastRootCFrame = physicsRoot.CFrame
+    LastRootVelocity = physicsRoot.Velocity
+    SpeedHistory = {}
+    AccelerationHistory = {}
+    JerkHistory = {}
+    PhysicsStateHistory = {}
+    
+    StatusLabel.Text = "Status: TELEPORTED (Stable: " .. math.floor(StabilityScore) .. "%)"
+    return true
+end
+
+-- ===================== GUI CONTROLS =====================
+
+-- GUI Control Functions
+local function toggleGUI()
+    GuiVisible = not GuiVisible
+    if GuiVisible then
+        MainFrame.Visible = true
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+            Size = UDim2.new(0.9, 0, 0.8, 0),
+            Position = UDim2.new(0.05, 0, 0.1, 0)
+        })
+        tween:Play()
+        HideButton.ImageColor3 = ColorPalette.Text
+    else
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+            Size = UDim2.new(0, 100, 0, 50),
+            Position = UDim2.new(1, -120, 0, 10)
+        })
+        tween.Completed:Connect(function()
+            HideButton.ImageColor3 = ColorPalette.Primary
+        end)
+        tween:Play()
+    end
+end
+
+local function toggleMinimize()
+    GuiMinimized = not GuiMinimized
+    if GuiMinimized then
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+            Size = UDim2.new(0.9, 0, 0, 50),
+            Position = UDim2.new(0.05, 0, 0, 10)
+        })
+        tween:Play()
+        MainContent.Visible = false
+        MinimizeButton.Rotation = 180
+    else
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+            Size = UDim2.new(0.9, 0, 0.8, 0),
+            Position = UDim2.new(0.05, 0, 0.1, 0)
+        })
+        tween:Play()
+        MainContent.Visible = true
+        MinimizeButton.Rotation = 0
+    end
+end
+
+-- Mobile-friendly dragging
+local function startDragging(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        Dragging = true
+        DragStartPosition = Vector2.new(input.Position.X, input.Position.Y)
+        GuiStartPosition = Vector2.new(MainFrame.Position.X.Offset, MainFrame.Position.Y.Offset)
+        
+        TitleBar.BackgroundColor3 = ColorPalette.BackgroundDark
+        
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            if Dragging then
+                local input = UserInputService:GetMouseLocation()
+                local delta = Vector2.new(input.X, input.Y) - DragStartPosition
+                local newX = math.clamp(GuiStartPosition.X + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - MainFrame.AbsoluteSize.X)
+                local newY = math.clamp(GuiStartPosition.Y + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - MainFrame.AbsoluteSize.Y)
+                MainFrame.Position = UDim2.new(0, newX, 0, newY)
+            else
+                connection:Disconnect()
             end
         end)
     end
-    task.wait(0.5)
-    updatePlayerList()
 end
 
--- Handle player joining
-local function handlePlayerJoining(player)
-    task.wait(0.5)
-    updatePlayerList()
-    
-    StatusLabel.Text = string.format("Status: %s (%s) joined", player.DisplayName, player.Name)
-    StatusLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
-    task.wait(2)
-    if StatusLabel.Text == string.format("Status: %s (%s) joined", player.DisplayName, player.Name) then
-        StatusLabel.Text = "Status: Idle"
-        StatusLabel.TextColor3 = Color3.fromRGB(150, 200, 150)
+local function stopDragging(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        Dragging = false
+        TitleBar.BackgroundColor3 = ColorPalette.BackgroundLight
     end
 end
 
--- HIDE/SHOW FUNCTIONS
-local function hideGUI()
-    MainFrame.Visible = false
-    UnhideButton.Visible = true
-    UnhideButton.Position = MainFrame.Position
+-- Button press effect
+local function buttonPressEffect(button)
+    local originalColor = button.BackgroundColor3
+    button.BackgroundColor3 = ColorPalette.ButtonPressed
+    
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if not button:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) and 
+           not button:IsMouseButtonPressed(Enum.UserInputType.Touch) then
+            button.BackgroundColor3 = originalColor
+            connection:Disconnect()
+        end
+    end)
 end
 
-local function showGUI()
-    MainFrame.Visible = true
-    UnhideButton.Visible = false
-end
+-- Connect mobile events
+TitleBar.InputBegan:Connect(startDragging)
+TitleBar.InputEnded:Connect(stopDragging)
 
--- Update distance and height displays
-local function updateSettingsDisplay()
-    DistanceValue.Text = tostring(targetDistance)
-    HeightValue.Text = tostring(followHeight)
-    InfoLabel.Text = string.format("Mode: Floating Follow\nDistance: %d | Height: %d", targetDistance, followHeight)
-end
+-- GUI Button events
+MinimizeButton.MouseButton1Down:Connect(function() buttonPressEffect(MinimizeButton) end)
+MinimizeButton.MouseButton1Click:Connect(toggleMinimize)
 
--- Distance controls
-DistanceMinus.MouseButton1Click:Connect(function()
-    targetDistance = math.max(2, targetDistance - 1)
-    updateSettingsDisplay()
+HideButton.MouseButton1Down:Connect(function() buttonPressEffect(HideButton) end)
+HideButton.MouseButton1Click:Connect(toggleGUI)
+
+CloseButton.MouseButton1Down:Connect(function() buttonPressEffect(CloseButton) end)
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
 end)
 
-DistancePlus.MouseButton1Click:Connect(function()
-    targetDistance = math.min(30, targetDistance + 1) -- Increased max distance
-    updateSettingsDisplay()
-end)
-
--- Height controls
-HeightMinus.MouseButton1Click:Connect(function()
-    followHeight = math.max(2, followHeight - 1)
-    updateSettingsDisplay()
-end)
-
-HeightPlus.MouseButton1Click:Connect(function()
-    followHeight = math.min(15, followHeight + 1) -- Increased max height
-    updateSettingsDisplay()
-end)
-
--- Make GUI draggable
-makeDraggableTouch(MainFrame, DragArea)
-makeDraggableTouch(UnhideButton, UnhideButton)
-
--- Hide button functionality
-HideButton.MouseButton1Click:Connect(function()
-    hideGUI()
-end)
-
--- Unhide button functionality
-UnhideButton.MouseButton1Click:Connect(function()
-    showGUI()
-end)
-
--- Search functionality
-SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-    searchFilter = SearchBox.Text
-    updatePlayerList()
-end)
-
--- Stick button
-StickButton.MouseButton1Click:Connect(function()
-    if selectedPlayer then
-        StickButton.BackgroundColor3 = Color3.fromRGB(30, 130, 50)
-        task.spawn(stickToPlayer)
-        task.wait(0.1)
-        StickButton.BackgroundColor3 = sticking and Color3.fromRGB(30, 150, 50) or Color3.fromRGB(50, 180, 70)
-    else
-        StatusLabel.Text = "Status: SELECT A PLAYER FIRST!"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
-        task.wait(2)
-        if StatusLabel.Text == "Status: SELECT A PLAYER FIRST!" then
-            StatusLabel.Text = "Status: Idle"
-            StatusLabel.TextColor3 = Color3.fromRGB(150, 200, 150)
+-- Follow/Unfollow buttons with advanced logic
+FollowButton.MouseButton1Down:Connect(function() buttonPressEffect(FollowButton) end)
+FollowButton.MouseButton1Click:Connect(function()
+    if CurrentTarget then
+        if teleportToTarget() then
+            Following = true
+            Method = "Smart Follow"
+            MethodLabel.Text = "Method: " .. Method
+            StatusLabel.Text = "Status: Following " .. (PlayerNicknames[CurrentTarget.Name] or CurrentTarget.DisplayName)
+            FollowButton.BackgroundColor3 = ColorPalette.PrimaryDark
+            UnfollowButton.BackgroundColor3 = ColorPalette.Danger
+            
+            -- Clear any existing lock
+            IsPhysicsLocked = false
+            PhysicsRoot = nil
         end
     end
 end)
 
--- Unstick button
-UnstickButton.MouseButton1Click:Connect(unstickFromPlayer)
-
--- Close button destroys the GUI
-CloseButton.MouseButton1Click:Connect(function() 
-    unstickFromPlayer()
-    ScreenGui:Destroy() 
+UnfollowButton.MouseButton1Down:Connect(function() buttonPressEffect(UnfollowButton) end)
+UnfollowButton.MouseButton1Click:Connect(function()
+    Following = false
+    CurrentTarget = nil
+    IsPhysicsLocked = false
+    PhysicsRoot = nil
+    AssemblyChangeDetected = false
+    
+    SelectedLabel.Text = "Selected: None"
+    StatusLabel.Text = "Status: Idle"
+    MethodLabel.Text = "Method: None"
+    StabilityLabel.Text = "Stability: 0%"
+    LockQualityLabel.Text = "Lock: 0%"
+    SpeedLabel.Text = "Speed: 0"
+    FollowButton.BackgroundColor3 = ColorPalette.Success
+    UnfollowButton.BackgroundColor3 = ColorPalette.ButtonNormal
+    
+    -- Deselect player in list
+    if SelectedPlayerButton then
+        SelectedPlayerButton.BackgroundColor3 = ColorPalette.BackgroundDark
+        SelectedPlayerButton.BackgroundTransparency = 0.5
+        SelectedPlayerButton = nil
+    end
+    
+    -- Stop movement
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+    end
 end)
 
--- Initial setup
+-- Settings adjustment handlers
+local function createMobileAdjustmentHandler(label, minValue, maxValue, step, callback)
+    return function(direction)
+        local currentText = label.Text
+        local currentNumber = tonumber(currentText:match("%d+%.?%d*")) or minValue
+        local newValue = direction == "plus" and currentNumber + step or currentNumber - step
+        newValue = math.clamp(newValue, minValue, maxValue)
+        label.Text = label.Text:gsub("%d+%.?%d*", tostring(newValue))
+        if callback then callback(newValue) end
+    end
+end
+
+-- Connect settings buttons
+DistanceMinus.MouseButton1Click:Connect(createMobileAdjustmentHandler(DistanceLabel, 1, 50, 1, function(value)
+    FollowDistance = value
+end))
+
+DistancePlus.MouseButton1Click:Connect(createMobileAdjustmentHandler(DistanceLabel, 1, 50, 1, function(value)
+    FollowDistance = value
+end))
+
+HeightMinus.MouseButton1Click:Connect(createMobileAdjustmentHandler(HeightLabel, 1, 50, 1, function(value)
+    FollowHeight = value
+end))
+
+HeightPlus.MouseButton1Click:Connect(createMobileAdjustmentHandler(HeightLabel, 1, 50, 1, function(value)
+    FollowHeight = value
+end))
+
+MaxSpeedMinus.MouseButton1Click:Connect(createMobileAdjustmentHandler(MaxSpeedLabel, 10, 500, 10, function(value)
+    MaxFlySpeed = value
+end))
+
+MaxSpeedPlus.MouseButton1Click:Connect(createMobileAdjustmentHandler(MaxSpeedLabel, 10, 500, 10, function(value)
+    MaxFlySpeed = value
+end))
+
+-- ===================== INITIALIZATION =====================
+
+-- Initialize UI
+SelectedLabel.Text = "Selected: None"
+StatusLabel.Text = "Status: Idle"
+MethodLabel.Text = "Method: None"
+SpeedLabel.Text = "Speed: 0"
+StabilityLabel.Text = "Stability: 0%"
+LockQualityLabel.Text = "Lock: 0%"
+DistanceLabel.Text = "Distance: " .. FollowDistance
+HeightLabel.Text = "Height: " .. FollowHeight
+MaxSpeedLabel.Text = "Max Speed: " .. MaxFlySpeed
+
+-- Initial player list
 updatePlayerList()
-updateSettingsDisplay()
 
 -- Auto-refresh player list
-task.spawn(function()
-    while ScreenGui.Parent and ScreenGui.Parent == PlayerGui do
+Players.PlayerAdded:Connect(function(player)
+    wait(0.5)
+    updatePlayerList()
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    updatePlayerList()
+    if CurrentTarget == player then
+        Following = false
+        CurrentTarget = nil
+        StatusLabel.Text = "Status: Target Left"
+        SelectedLabel.Text = "Selected: None"
+        
+        if SelectedPlayerButton then
+            SelectedPlayerButton.BackgroundColor3 = ColorPalette.BackgroundDark
+            SelectedPlayerButton.BackgroundTransparency = 0.5
+            SelectedPlayerButton = nil
+        end
+    end
+end)
+
+-- Main follow loop
+RunService.Heartbeat:Connect(function()
+    if Following and CurrentTarget then
+        if not CurrentTarget.Parent or not CurrentTarget.Character then
+            Following = false
+            StatusLabel.Text = "Status: Target Lost"
+            return
+        end
+        
+        hybridFollowUltimate()
+    end
+end)
+
+-- Auto-refresh every 3 seconds
+while true do
+    wait(3)
+    if not Following then
         updatePlayerList()
-        task.wait(2)
-    end
-end)
-
--- Connect player events
-Players.PlayerAdded:Connect(handlePlayerJoining)
-Players.PlayerRemoving:Connect(handlePlayerLeaving)
-
--- Auto-unstick when character respawns
-LocalPlayer.CharacterAdded:Connect(function(character)
-    unstickFromPlayer()
-    task.wait(1)
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.Died:Connect(function()
-            unstickFromPlayer()
-        end)
-    end
-end)
-
--- Handle initial character death
-if LocalPlayer.Character then
-    local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.Died:Connect(function()
-            unstickFromPlayer()
-        end)
     end
 end
