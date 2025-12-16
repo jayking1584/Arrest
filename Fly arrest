@@ -24,7 +24,6 @@ local SelectedPlayerButton = nil
 
 -- GUI State
 local GuiVisible = true
-local GuiMinimized = false
 local Dragging = false
 local DragStartPosition
 local GuiStartPosition
@@ -72,27 +71,27 @@ local ColorPalette = {
     ButtonPressed = Color3.fromRGB(70, 70, 90)
 }
 
--- ===================== CREATE COMPACT MOBILE GUI =====================
+-- ===================== CREATE SQUARE MOBILE GUI =====================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SmartFollowGUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.IgnoreGuiInset = false
 
--- Main container frame - VERY COMPACT
+-- Main container frame - SQUARE SIZE
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0.9, 0, 0.25, 0)  -- Half the size!
-MainFrame.Position = UDim2.new(0.05, 0, 0.05, 0)
+MainFrame.Size = UDim2.new(0, 220, 0, 240)  -- Square dimensions
+MainFrame.Position = UDim2.new(0, 10, 0, 10)
 MainFrame.BackgroundColor3 = ColorPalette.Background
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.CornerRadius = UDim.new(0, 8)
 MainCorner.Parent = MainFrame
 
--- Title Bar - SUPER COMPACT
+-- Title Bar - COMPACT
 local TitleBar = Instance.new("Frame")
 TitleBar.Name = "TitleBar"
 TitleBar.Size = UDim2.new(1, 0, 0, 28)
@@ -100,43 +99,25 @@ TitleBar.BackgroundColor3 = ColorPalette.BackgroundLight
 TitleBar.BorderSizePixel = 0
 
 local TitleBarCorner = Instance.new("UICorner")
-TitleBarCorner.CornerRadius = UDim.new(0, 10)
+TitleBarCorner.CornerRadius = UDim.new(0, 8)
 TitleBarCorner.Parent = TitleBar
 
--- Title - Small
+-- Title - Centered
 local Title = Instance.new("TextLabel")
 Title.Name = "Title"
-Title.Size = UDim2.new(0.7, 0, 1, 0)
-Title.Position = UDim2.new(0, 8, 0, 0)
+Title.Size = UDim2.new(1, 0, 1, 0)
 Title.BackgroundTransparency = 1
 Title.Text = "FOLLOW SYSTEM"
 Title.TextColor3 = ColorPalette.Primary
 Title.TextSize = 14
 Title.Font = Enum.Font.GothamBold
-Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.TextXAlignment = Enum.TextXAlignment.Center
 Title.TextYAlignment = Enum.TextYAlignment.Center
 Title.Parent = TitleBar
 
--- Close button only
-local CloseButton = Instance.new("ImageButton")
-CloseButton.Name = "CloseButton"
-CloseButton.Size = UDim2.new(0.2, 0, 0.7, 0)
-CloseButton.Position = UDim2.new(0.78, 0, 0.15, 0)
-CloseButton.BackgroundColor3 = ColorPalette.Danger
-CloseButton.Image = "rbxassetid://3926305904"
-CloseButton.ImageRectOffset = Vector2.new(284, 4)
-CloseButton.ImageRectSize = Vector2.new(24, 24)
-CloseButton.ImageColor3 = Color3.new(1, 1, 1)
-CloseButton.ScaleType = Enum.ScaleType.Fit
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 6)
-CloseCorner.Parent = CloseButton
-
-CloseButton.Parent = TitleBar
 TitleBar.Parent = MainFrame
 
--- Main content
+-- Main content - SQUARE LAYOUT
 local MainContent = Instance.new("Frame")
 MainContent.Name = "MainContent"
 MainContent.Size = UDim2.new(1, 0, 1, -28)
@@ -145,29 +126,34 @@ MainContent.BackgroundTransparency = 1
 MainContent.Parent = MainFrame
 
 local ContentPadding = Instance.new("UIPadding")
-ContentPadding.PaddingLeft = UDim.new(0, 6)
-ContentPadding.PaddingRight = UDim.new(0, 6)
+ContentPadding.PaddingLeft = UDim.new(0, 8)
+ContentPadding.PaddingRight = UDim.new(0, 8)
 ContentPadding.PaddingTop = UDim.new(0, 6)
 ContentPadding.PaddingBottom = UDim.new(0, 6)
 ContentPadding.Parent = MainContent
 
--- Top row: Selected player and status
-local TopRow = Instance.new("Frame")
-TopRow.Name = "TopRow"
-TopRow.Size = UDim2.new(1, 0, 0, 56)
-TopRow.BackgroundTransparency = 1
-TopRow.Parent = MainContent
+-- Row 1: Selected player and Status (side by side)
+local Row1 = Instance.new("Frame")
+Row1.Name = "Row1"
+Row1.Size = UDim2.new(1, 0, 0, 50)
+Row1.BackgroundTransparency = 1
+Row1.Parent = MainContent
 
--- Left column: Selected display
+-- Left: Selected
 local SelectedContainer = Instance.new("Frame")
 SelectedContainer.Name = "SelectedContainer"
-SelectedContainer.Size = UDim2.new(0.5, 0, 1, 0)
-SelectedContainer.BackgroundTransparency = 1
-SelectedContainer.Parent = TopRow
+SelectedContainer.Size = UDim2.new(0.48, 0, 1, 0)
+SelectedContainer.BackgroundColor3 = ColorPalette.BackgroundDark
+SelectedContainer.BorderSizePixel = 0
+
+local SelectedCorner = Instance.new("UICorner")
+SelectedCorner.CornerRadius = UDim.new(0, 6)
+SelectedCorner.Parent = SelectedContainer
 
 local SelectedLabel = Instance.new("TextLabel")
 SelectedLabel.Name = "SelectedLabel"
-SelectedLabel.Size = UDim2.new(1, 0, 0.5, 0)
+SelectedLabel.Size = UDim2.new(1, -8, 0.5, 0)
+SelectedLabel.Position = UDim2.new(0, 4, 0, 0)
 SelectedLabel.BackgroundTransparency = 1
 SelectedLabel.Text = "SELECTED"
 SelectedLabel.TextColor3 = ColorPalette.TextMuted
@@ -178,8 +164,8 @@ SelectedLabel.Parent = SelectedContainer
 
 local SelectedValue = Instance.new("TextLabel")
 SelectedValue.Name = "SelectedValue"
-SelectedValue.Size = UDim2.new(1, 0, 0.5, 0)
-SelectedValue.Position = UDim2.new(0, 0, 0.5, 0)
+SelectedValue.Size = UDim2.new(1, -8, 0.5, 0)
+SelectedValue.Position = UDim2.new(0, 4, 0.5, 0)
 SelectedValue.BackgroundTransparency = 1
 SelectedValue.Text = "None"
 SelectedValue.TextColor3 = ColorPalette.Text
@@ -188,17 +174,24 @@ SelectedValue.Font = Enum.Font.GothamBold
 SelectedValue.TextXAlignment = Enum.TextXAlignment.Left
 SelectedValue.Parent = SelectedContainer
 
--- Right column: Status display
+SelectedContainer.Parent = Row1
+
+-- Right: Status
 local StatusContainer = Instance.new("Frame")
 StatusContainer.Name = "StatusContainer"
-StatusContainer.Size = UDim2.new(0.5, 0, 1, 0)
-StatusContainer.Position = UDim2.new(0.5, 0, 0, 0)
-StatusContainer.BackgroundTransparency = 1
-StatusContainer.Parent = TopRow
+StatusContainer.Size = UDim2.new(0.48, 0, 1, 0)
+StatusContainer.Position = UDim2.new(0.52, 0, 0, 0)
+StatusContainer.BackgroundColor3 = ColorPalette.BackgroundDark
+StatusContainer.BorderSizePixel = 0
+
+local StatusCorner = Instance.new("UICorner")
+StatusCorner.CornerRadius = UDim.new(0, 6)
+StatusCorner.Parent = StatusContainer
 
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Name = "StatusLabel"
-StatusLabel.Size = UDim2.new(1, 0, 0.5, 0)
+StatusLabel.Size = UDim2.new(1, -8, 0.5, 0)
+StatusLabel.Position = UDim2.new(0, 4, 0, 0)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Text = "STATUS"
 StatusLabel.TextColor3 = ColorPalette.TextMuted
@@ -209,8 +202,8 @@ StatusLabel.Parent = StatusContainer
 
 local StatusValue = Instance.new("TextLabel")
 StatusValue.Name = "StatusValue"
-StatusValue.Size = UDim2.new(1, 0, 0.5, 0)
-StatusValue.Position = UDim2.new(0, 0, 0.5, 0)
+StatusValue.Size = UDim2.new(1, -8, 0.5, 0)
+StatusValue.Position = UDim2.new(0, 4, 0.5, 0)
 StatusValue.BackgroundTransparency = 1
 StatusValue.Text = "Idle"
 StatusValue.TextColor3 = ColorPalette.Text
@@ -219,14 +212,17 @@ StatusValue.Font = Enum.Font.GothamBold
 StatusValue.TextXAlignment = Enum.TextXAlignment.Left
 StatusValue.Parent = StatusContainer
 
--- Control buttons row
-local ButtonRow = Instance.new("Frame")
-ButtonRow.Name = "ButtonRow"
-ButtonRow.Size = UDim2.new(1, 0, 0, 36)
-ButtonRow.Position = UDim2.new(0, 0, 0, 62)
-ButtonRow.BackgroundTransparency = 1
-ButtonRow.Parent = MainContent
+StatusContainer.Parent = Row1
 
+-- Row 2: Action buttons
+local Row2 = Instance.new("Frame")
+Row2.Name = "Row2"
+Row2.Size = UDim2.new(1, 0, 0, 36)
+Row2.Position = UDim2.new(0, 0, 0, 56)
+Row2.BackgroundTransparency = 1
+Row2.Parent = MainContent
+
+-- Follow Button
 local FollowButton = Instance.new("TextButton")
 FollowButton.Name = "FollowButton"
 FollowButton.Size = UDim2.new(0.32, 0, 1, 0)
@@ -241,6 +237,7 @@ local FollowCorner = Instance.new("UICorner")
 FollowCorner.CornerRadius = UDim.new(0, 6)
 FollowCorner.Parent = FollowButton
 
+-- Teleport Button
 local TeleportButton = Instance.new("TextButton")
 TeleportButton.Name = "TeleportButton"
 TeleportButton.Size = UDim2.new(0.32, 0, 1, 0)
@@ -256,13 +253,14 @@ local TeleportCorner = Instance.new("UICorner")
 TeleportCorner.CornerRadius = UDim.new(0, 6)
 TeleportCorner.Parent = TeleportButton
 
+-- Stop Button
 local UnfollowButton = Instance.new("TextButton")
 UnfollowButton.Name = "UnfollowButton"
 UnfollowButton.Size = UDim2.new(0.32, 0, 1, 0)
 UnfollowButton.Position = UDim2.new(0.68, 0, 0, 0)
-UnfollowButton.BackgroundColor3 = ColorPalette.Danger
+UnfollowButton.BackgroundColor3 = ColorPalette.ButtonNormal
 UnfollowButton.Text = "STOP"
-UnfollowButton.TextColor3 = Color3.new(1, 1, 1)
+UnfollowButton.TextColor3 = ColorPalette.Text
 UnfollowButton.TextSize = 12
 UnfollowButton.Font = Enum.Font.GothamBold
 UnfollowButton.TextYAlignment = Enum.TextYAlignment.Center
@@ -271,39 +269,34 @@ local UnfollowCorner = Instance.new("UICorner")
 UnfollowCorner.CornerRadius = UDim.new(0, 6)
 UnfollowCorner.Parent = UnfollowButton
 
-FollowButton.Parent = ButtonRow
-TeleportButton.Parent = ButtonRow
-UnfollowButton.Parent = ButtonRow
+FollowButton.Parent = Row2
+TeleportButton.Parent = Row2
+UnfollowButton.Parent = Row2
 
--- Settings row
-local SettingsRow = Instance.new("Frame")
-SettingsRow.Name = "SettingsRow"
-SettingsRow.Size = UDim2.new(1, 0, 0, 40)
-SettingsRow.Position = UDim2.new(0, 0, 0, 104)
-SettingsRow.BackgroundTransparency = 1
-SettingsRow.Parent = MainContent
+-- Row 3: Speed control
+local Row3 = Instance.new("Frame")
+Row3.Name = "Row3"
+Row3.Size = UDim2.new(1, 0, 0, 40)
+Row3.Position = UDim2.new(0, 0, 0, 98)
+Row3.BackgroundTransparency = 1
+Row3.Parent = MainContent
 
--- Max speed setting
-local SpeedContainer = Instance.new("Frame")
-SpeedContainer.Name = "SpeedContainer"
-SpeedContainer.Size = UDim2.new(0.5, 0, 1, 0)
-SpeedContainer.BackgroundTransparency = 1
-SpeedContainer.Parent = SettingsRow
-
+-- Speed label
 local SpeedLabel = Instance.new("TextLabel")
 SpeedLabel.Name = "SpeedLabel"
-SpeedLabel.Size = UDim2.new(0.6, 0, 0.5, 0)
+SpeedLabel.Size = UDim2.new(0.5, 0, 0.5, 0)
 SpeedLabel.BackgroundTransparency = 1
 SpeedLabel.Text = "MAX SPEED"
 SpeedLabel.TextColor3 = ColorPalette.TextMuted
 SpeedLabel.TextSize = 10
 SpeedLabel.Font = Enum.Font.GothamMedium
 SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
-SpeedLabel.Parent = SpeedContainer
+SpeedLabel.Parent = Row3
 
+-- Speed value
 local SpeedValue = Instance.new("TextLabel")
 SpeedValue.Name = "SpeedValue"
-SpeedValue.Size = UDim2.new(0.6, 0, 0.5, 0)
+SpeedValue.Size = UDim2.new(0.5, 0, 0.5, 0)
 SpeedValue.Position = UDim2.new(0, 0, 0.5, 0)
 SpeedValue.BackgroundTransparency = 1
 SpeedValue.Text = "300"
@@ -311,16 +304,24 @@ SpeedValue.TextColor3 = ColorPalette.Text
 SpeedValue.TextSize = 14
 SpeedValue.Font = Enum.Font.GothamBold
 SpeedValue.TextXAlignment = Enum.TextXAlignment.Left
-SpeedValue.Parent = SpeedContainer
+SpeedValue.Parent = Row3
+
+-- Speed control buttons
+local SpeedControls = Instance.new("Frame")
+SpeedControls.Name = "SpeedControls"
+SpeedControls.Size = UDim2.new(0.5, 0, 1, 0)
+SpeedControls.Position = UDim2.new(0.5, 0, 0, 0)
+SpeedControls.BackgroundTransparency = 1
+SpeedControls.Parent = Row3
 
 local SpeedMinus = Instance.new("TextButton")
 SpeedMinus.Name = "SpeedMinus"
-SpeedMinus.Size = UDim2.new(0.2, 0, 0.8, 0)
-SpeedMinus.Position = UDim2.new(0.6, 0, 0.1, 0)
+SpeedMinus.Size = UDim2.new(0.3, 0, 0.7, 0)
+SpeedMinus.Position = UDim2.new(0, 0, 0.15, 0)
 SpeedMinus.BackgroundColor3 = ColorPalette.ButtonNormal
 SpeedMinus.Text = "-"
 SpeedMinus.TextColor3 = ColorPalette.Text
-SpeedMinus.TextSize = 16
+SpeedMinus.TextSize = 14
 SpeedMinus.Font = Enum.Font.GothamBold
 
 local SpeedMinusCorner = Instance.new("UICorner")
@@ -329,33 +330,32 @@ SpeedMinusCorner.Parent = SpeedMinus
 
 local SpeedPlus = Instance.new("TextButton")
 SpeedPlus.Name = "SpeedPlus"
-SpeedPlus.Size = UDim2.new(0.2, 0, 0.8, 0)
-SpeedPlus.Position = UDim2.new(0.8, 0, 0.1, 0)
+SpeedPlus.Size = UDim2.new(0.3, 0, 0.7, 0)
+SpeedPlus.Position = UDim2.new(0.35, 0, 0.15, 0)
 SpeedPlus.BackgroundColor3 = ColorPalette.ButtonNormal
 SpeedPlus.Text = "+"
 SpeedPlus.TextColor3 = ColorPalette.Text
-SpeedPlus.TextSize = 16
+SpeedPlus.TextSize = 14
 SpeedPlus.Font = Enum.Font.GothamBold
 
 local SpeedPlusCorner = Instance.new("UICorner")
 SpeedPlusCorner.CornerRadius = UDim.new(0, 6)
 SpeedPlusCorner.Parent = SpeedPlus
 
-SpeedMinus.Parent = SpeedContainer
-SpeedPlus.Parent = SpeedContainer
+SpeedMinus.Parent = SpeedControls
+SpeedPlus.Parent = SpeedControls
 
--- Player list toggle button
-local PlayersContainer = Instance.new("Frame")
-PlayersContainer.Name = "PlayersContainer"
-PlayersContainer.Size = UDim2.new(0.5, 0, 1, 0)
-PlayersContainer.Position = UDim2.new(0.5, 0, 0, 0)
-PlayersContainer.BackgroundTransparency = 1
-PlayersContainer.Parent = SettingsRow
+-- Row 4: Players button
+local Row4 = Instance.new("Frame")
+Row4.Name = "Row4"
+Row4.Size = UDim2.new(1, 0, 0, 36)
+Row4.Position = UDim2.new(0, 0, 0, 144)
+Row4.BackgroundTransparency = 1
+Row4.Parent = MainContent
 
 local PlayersButton = Instance.new("TextButton")
 PlayersButton.Name = "PlayersButton"
-PlayersButton.Size = UDim2.new(0.9, 0, 0.8, 0)
-PlayersButton.Position = UDim2.new(0.05, 0, 0.1, 0)
+PlayersButton.Size = UDim2.new(1, 0, 1, 0)
 PlayersButton.BackgroundColor3 = ColorPalette.ButtonNormal
 PlayersButton.Text = "👥 PLAYERS"
 PlayersButton.TextColor3 = ColorPalette.Text
@@ -367,7 +367,25 @@ local PlayersCorner = Instance.new("UICorner")
 PlayersCorner.CornerRadius = UDim.new(0, 8)
 PlayersCorner.Parent = PlayersButton
 
-PlayersButton.Parent = PlayersContainer
+PlayersButton.Parent = Row4
+
+-- Close button (small in corner)
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Size = UDim2.new(0, 20, 0, 20)
+CloseButton.Position = UDim2.new(1, -22, 0, 4)
+CloseButton.BackgroundColor3 = ColorPalette.Danger
+CloseButton.Text = "✕"
+CloseButton.TextColor3 = Color3.new(1, 1, 1)
+CloseButton.TextSize = 12
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.TextYAlignment = Enum.TextYAlignment.Center
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 10)
+CloseCorner.Parent = CloseButton
+
+CloseButton.Parent = MainFrame
 
 MainFrame.Parent = ScreenGui
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -375,15 +393,15 @@ ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 -- ===================== PLAYER LIST POPUP =====================
 local PlayerListPopup = Instance.new("Frame")
 PlayerListPopup.Name = "PlayerListPopup"
-PlayerListPopup.Size = UDim2.new(0.9, 0, 0.6, 0)
-PlayerListPopup.Position = UDim2.new(0.05, 0, 0.2, 0)
+PlayerListPopup.Size = UDim2.new(0, 200, 0, 300)
+PlayerListPopup.Position = UDim2.new(0.5, -100, 0.5, -150)
 PlayerListPopup.BackgroundColor3 = ColorPalette.Background
 PlayerListPopup.BorderSizePixel = 0
 PlayerListPopup.Visible = false
 PlayerListPopup.ZIndex = 10
 
 local PlayerListPopupCorner = Instance.new("UICorner")
-PlayerListPopupCorner.CornerRadius = UDim.new(0, 12)
+PlayerListPopupCorner.CornerRadius = UDim.new(0, 10)
 PlayerListPopupCorner.Parent = PlayerListPopup
 
 local PlayerListHeader = Instance.new("Frame")
@@ -393,17 +411,17 @@ PlayerListHeader.BackgroundColor3 = ColorPalette.BackgroundLight
 PlayerListHeader.BorderSizePixel = 0
 
 local PlayerListHeaderCorner = Instance.new("UICorner")
-PlayerListHeaderCorner.CornerRadius = UDim.new(0, 12)
+PlayerListHeaderCorner.CornerRadius = UDim.new(0, 10)
 PlayerListHeaderCorner.Parent = PlayerListHeader
 
 local PlayerListTitle = Instance.new("TextLabel")
 PlayerListTitle.Name = "PlayerListTitle"
-PlayerListTitle.Size = UDim2.new(0.8, 0, 1, 0)
+PlayerListTitle.Size = UDim2.new(1, -40, 1, 0)
 PlayerListTitle.Position = UDim2.new(0, 10, 0, 0)
 PlayerListTitle.BackgroundTransparency = 1
 PlayerListTitle.Text = "SELECT PLAYER"
 PlayerListTitle.TextColor3 = ColorPalette.Text
-PlayerListTitle.TextSize = 16
+PlayerListTitle.TextSize = 14
 PlayerListTitle.Font = Enum.Font.GothamBold
 PlayerListTitle.TextXAlignment = Enum.TextXAlignment.Left
 PlayerListTitle.TextYAlignment = Enum.TextYAlignment.Center
@@ -411,8 +429,8 @@ PlayerListTitle.Parent = PlayerListHeader
 
 local PlayerListClose = Instance.new("TextButton")
 PlayerListClose.Name = "PlayerListClose"
-PlayerListClose.Size = UDim2.new(0.15, 0, 0.7, 0)
-PlayerListClose.Position = UDim2.new(0.83, 0, 0.15, 0)
+PlayerListClose.Size = UDim2.new(0, 30, 0, 30)
+PlayerListClose.Position = UDim2.new(1, -35, 0, 3)
 PlayerListClose.BackgroundColor3 = ColorPalette.Danger
 PlayerListClose.Text = "✕"
 PlayerListClose.TextColor3 = Color3.new(1, 1, 1)
@@ -421,7 +439,7 @@ PlayerListClose.Font = Enum.Font.GothamBold
 PlayerListClose.TextYAlignment = Enum.TextYAlignment.Center
 
 local PlayerListCloseCorner = Instance.new("UICorner")
-PlayerListCloseCorner.CornerRadius = UDim.new(0, 6)
+PlayerListCloseCorner.CornerRadius = UDim.new(0, 15)
 PlayerListCloseCorner.Parent = PlayerListClose
 
 PlayerListClose.Parent = PlayerListHeader
@@ -440,11 +458,11 @@ PlayerListContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
 local PlayerListLayout = Instance.new("UIListLayout")
 PlayerListLayout.SortOrder = Enum.SortOrder.Name
-PlayerListLayout.Padding = UDim.new(0, 6)
+PlayerListLayout.Padding = UDim.new(0, 4)
 PlayerListLayout.Parent = PlayerListContainer
 
 PlayerListContainer.Parent = PlayerListPopup
-PlayerListPopup.Parent = MainFrame
+PlayerListPopup.Parent = ScreenGui
 
 -- ===================== ADVANCED FOLLOW LOGIC =====================
 
@@ -468,16 +486,16 @@ local function createPlayerEntry(player)
     PlayerEntry.BackgroundTransparency = 0.5
     
     local EntryCorner = Instance.new("UICorner")
-    EntryCorner.CornerRadius = UDim.new(0, 8)
+    EntryCorner.CornerRadius = UDim.new(0, 6)
     EntryCorner.Parent = PlayerEntry
     
     -- Player display name
     local PlayerNameLabel = Instance.new("TextLabel")
     PlayerNameLabel.Name = "PlayerNameLabel"
-    PlayerNameLabel.Size = UDim2.new(0.6, 0, 0.6, 0)
-    PlayerNameLabel.Position = UDim2.new(0, 10, 0.1, 0)
+    PlayerNameLabel.Size = UDim2.new(0.7, 0, 0.6, 0)
+    PlayerNameLabel.Position = UDim2.new(0, 8, 0.1, 0)
     PlayerNameLabel.BackgroundTransparency = 1
-    PlayerNameLabel.Text = string.sub(player.DisplayName, 1, 12)
+    PlayerNameLabel.Text = string.sub(player.DisplayName, 1, 10)
     PlayerNameLabel.TextColor3 = ColorPalette.Text
     PlayerNameLabel.TextSize = 12
     PlayerNameLabel.Font = Enum.Font.GothamMedium
@@ -489,8 +507,8 @@ local function createPlayerEntry(player)
     -- Player username
     local UserNameLabel = Instance.new("TextLabel")
     UserNameLabel.Name = "UserNameLabel"
-    UserNameLabel.Size = UDim2.new(0.6, 0, 0.4, 0)
-    UserNameLabel.Position = UDim2.new(0, 10, 0.6, 0)
+    UserNameLabel.Size = UDim2.new(0.7, 0, 0.4, 0)
+    UserNameLabel.Position = UDim2.new(0, 8, 0.6, 0)
     UserNameLabel.BackgroundTransparency = 1
     UserNameLabel.Text = "@" .. string.sub(player.Name, 1, 8)
     UserNameLabel.TextColor3 = ColorPalette.TextMuted
@@ -500,37 +518,21 @@ local function createPlayerEntry(player)
     UserNameLabel.TextYAlignment = Enum.TextYAlignment.Center
     UserNameLabel.Parent = PlayerEntry
     
-    -- Nickname indicator
-    if PlayerNicknames[player.Name] then
-        local NicknameIndicator = Instance.new("Frame")
-        NicknameIndicator.Name = "NicknameIndicator"
-        NicknameIndicator.Size = UDim2.new(0.03, 0, 0.6, 0)
-        NicknameIndicator.Position = UDim2.new(0, 3, 0.2, 0)
-        NicknameIndicator.BackgroundColor3 = ColorPalette.Primary
-        NicknameIndicator.BorderSizePixel = 0
-        
-        local IndicatorCorner = Instance.new("UICorner")
-        IndicatorCorner.CornerRadius = UDim.new(0, 2)
-        IndicatorCorner.Parent = NicknameIndicator
-        
-        NicknameIndicator.Parent = PlayerEntry
-    end
-    
     -- Select button
     local SelectButton = Instance.new("TextButton")
     SelectButton.Name = "SelectButton"
-    SelectButton.Size = UDim2.new(0.3, 0, 0.7, 0)
-    SelectButton.Position = UDim2.new(0.67, 0, 0.15, 0)
-    SelectButton.BackgroundColor3 = ColorPalette.ButtonNormal
+    SelectButton.Size = UDim2.new(0.25, 0, 0.7, 0)
+    SelectButton.Position = UDim2.new(0.72, 0, 0.15, 0)
+    SelectButton.BackgroundColor3 = ColorPalette.Primary
     SelectButton.Text = "SELECT"
-    SelectButton.TextColor3 = ColorPalette.Text
+    SelectButton.TextColor3 = Color3.new(1, 1, 1)
     SelectButton.TextSize = 10
     SelectButton.Font = Enum.Font.GothamBold
     SelectButton.TextYAlignment = Enum.TextYAlignment.Center
     
     local SelectCorner = Instance.new("UICorner")
-SelectCorner.CornerRadius = UDim.new(0, 6)
-SelectCorner.Parent = SelectButton
+    SelectCorner.CornerRadius = UDim.new(0, 6)
+    SelectCorner.Parent = SelectButton
     
     SelectButton.Parent = PlayerEntry
     
@@ -547,7 +549,7 @@ SelectCorner.Parent = SelectButton
         SelectedPlayerButton.BackgroundTransparency = 0.3
         
         CurrentTarget = player
-        local displayName = PlayerNicknames[player.Name] or string.sub(player.DisplayName, 1, 12)
+        local displayName = PlayerNicknames[player.Name] or string.sub(player.DisplayName, 1, 10)
         SelectedValue.Text = displayName
         StatusValue.Text = "Ready"
         
@@ -556,93 +558,7 @@ SelectCorner.Parent = SelectButton
         
         -- Update button states
         UnfollowButton.BackgroundColor3 = ColorPalette.Danger
-    end)
-    
-    -- Nickname button (long press on select button)
-    local longPressTime = 0
-    local longPressThreshold = 0.8
-    
-    SelectButton.MouseButton1Down:Connect(function()
-        longPressTime = tick()
-        
-        wait(longPressThreshold)
-        
-        if tick() - longPressTime >= longPressThreshold then
-            -- Create nickname input popup
-            local NicknamePopup = Instance.new("Frame")
-            NicknamePopup.Name = "NicknamePopup"
-            NicknamePopup.Size = UDim2.new(0.9, 0, 0, 80)
-            NicknamePopup.Position = UDim2.new(0.05, 0, 0.5, -40)
-            NicknamePopup.BackgroundColor3 = ColorPalette.Background
-            NicknamePopup.BorderSizePixel = 0
-            NicknamePopup.ZIndex = 20
-            
-            local PopupCorner = Instance.new("UICorner")
-            PopupCorner.CornerRadius = UDim.new(0, 8)
-            PopupCorner.Parent = NicknamePopup
-            
-            local NicknameInput = Instance.new("TextBox")
-            NicknameInput.Name = "NicknameInput"
-            NicknameInput.Size = UDim2.new(0.9, 0, 0.5, 0)
-            NicknameInput.Position = UDim2.new(0.05, 0, 0.1, 0)
-            NicknameInput.BackgroundColor3 = ColorPalette.BackgroundDark
-            NicknameInput.TextColor3 = ColorPalette.Text
-            NicknameInput.TextSize = 12
-            NicknameInput.Font = Enum.Font.Gotham
-            NicknameInput.PlaceholderText = "Nickname (clear to remove)"
-            NicknameInput.PlaceholderColor3 = ColorPalette.TextMuted
-            NicknameInput.Text = PlayerNicknames[player.Name] or ""
-            NicknameInput.ClearTextOnFocus = false
-            
-            local InputCorner = Instance.new("UICorner")
-            InputCorner.CornerRadius = UDim.new(0, 6)
-            InputCorner.Parent = NicknameInput
-            
-            local SaveButton = Instance.new("TextButton")
-            SaveButton.Name = "SaveButton"
-            SaveButton.Size = UDim2.new(0.4, 0, 0.4, 0)
-            SaveButton.Position = UDim2.new(0.3, 0, 0.6, 0)
-            SaveButton.BackgroundColor3 = ColorPalette.Primary
-            SaveButton.Text = "SAVE"
-            SaveButton.TextColor3 = Color3.new(1, 1, 1)
-            SaveButton.TextSize = 12
-            SaveButton.Font = Enum.Font.GothamBold
-            SaveButton.TextYAlignment = Enum.TextYAlignment.Center
-            
-            local SaveCorner = Instance.new("UICorner")
-            SaveCorner.CornerRadius = UDim.new(0, 6)
-            SaveCorner.Parent = SaveButton
-            
-            NicknameInput.FocusLost:Connect(function(enterPressed)
-                if enterPressed then
-                    local newNickname = NicknameInput.Text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
-                    if newNickname == "" then
-                        PlayerNicknames[player.Name] = nil
-                    else
-                        PlayerNicknames[player.Name] = newNickname
-                    end
-                    NicknamePopup:Destroy()
-                    updatePlayerList()
-                end
-            end)
-            
-            SaveButton.MouseButton1Click:Connect(function()
-                local newNickname = NicknameInput.Text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
-                if newNickname == "" then
-                    PlayerNicknames[player.Name] = nil
-                else
-                    PlayerNicknames[player.Name] = newNickname
-                end
-                NicknamePopup:Destroy()
-                updatePlayerList()
-            end)
-            
-            NicknameInput.Parent = NicknamePopup
-            SaveButton.Parent = NicknamePopup
-            NicknamePopup.Parent = PlayerEntry
-            
-            NicknameInput:CaptureFocus()
-        end
+        FollowButton.BackgroundColor3 = ColorPalette.Primary
     end)
     
     return PlayerEntry
@@ -1224,10 +1140,7 @@ FollowButton.MouseButton1Click:Connect(function()
             Method = "Smart Follow"
             StatusValue.Text = "Following"
             FollowButton.BackgroundColor3 = ColorPalette.PrimaryDark
-            
-            -- Clear any existing lock
-            IsPhysicsLocked = false
-            PhysicsRoot = nil
+            UnfollowButton.BackgroundColor3 = ColorPalette.Danger
         end
     end
 end)
@@ -1249,8 +1162,9 @@ UnfollowButton.MouseButton1Click:Connect(function()
     
     SelectedValue.Text = "None"
     StatusValue.Text = "Idle"
-    SpeedValue.Text = "300"
+    SpeedValue.Text = tostring(MaxFlySpeed)
     FollowButton.BackgroundColor3 = ColorPalette.Success
+    UnfollowButton.BackgroundColor3 = ColorPalette.ButtonNormal
     
     -- Deselect player in list
     if SelectedPlayerButton then
