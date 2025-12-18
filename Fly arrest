@@ -1,4 +1,4 @@
--- ULTRA ARREST STICK v8.3 – Exploit Safe
+-- ULTRA ARREST STICK v8.4 – Exploit Ready + Hide + Server Hop Under Buttons
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -9,7 +9,7 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Cleanup old GUI
+-- Cleanup
 do
     local old = PlayerGui:FindFirstChild("ArrestStickGUI")
     if old then old:Destroy() end
@@ -44,13 +44,14 @@ local lastRefresh = 0
 local StatusLabel, InfoLabel, SelectedLabel, PlayerScroll
 local StickButton, UnstickButton
 local UpButton, DownButton, LeftButton, RightButton, ForwardButton, BackButton
-local ServerHopButton, CloseButton
+local ServerHopButton, CloseButton, HideButton
+local PlayerPanel, ControlPanel
 
---------------------------------------------------------------------
--- SERVER HOP (can be disabled by setting ENABLE_SERVER_HOP = false)
---------------------------------------------------------------------
 local ENABLE_SERVER_HOP = true
 
+------------------------------------------------
+-- Server hop
+------------------------------------------------
 local function hopToBusiestServer()
     if not ENABLE_SERVER_HOP then return end
     if not StatusLabel then return end
@@ -94,9 +95,9 @@ local function hopToBusiestServer()
     end)
 end
 
---------------------------------------------------
--- Target reference (foot or vehicle, up to 5000)
---------------------------------------------------
+------------------------------------------------
+-- Target reference
+------------------------------------------------
 local function getBulletproofReference(plr)
     local char = plr.Character
     if not char or not char.Parent then return nil, nil, "NONE" end
@@ -108,7 +109,6 @@ local function getBulletproofReference(plr)
 
     if not hum or not root then return nil, nil, "NO_ROOT" end
 
-    -- Direct seat
     local seat = hum.SeatPart
     if seat then
         local vehicle = seat.Parent
@@ -118,7 +118,6 @@ local function getBulletproofReference(plr)
         return seat, root, "SEAT"
     end
 
-    -- Fallback scan (up to VEHICLE_RADIUS from local player)
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if myRoot then
@@ -162,9 +161,9 @@ local function getBulletproofReference(plr)
     return root, root, "FOOT"
 end
 
-----------------------
--- Physics selection
-----------------------
+------------------------------------------------
+-- Physics
+------------------------------------------------
 local function analyzeTargetState(motionRef, rootRef, myRoot)
     local vel = motionRef.AssemblyLinearVelocity or Vector3.zero
     local angVel = motionRef.AssemblyAngularVelocity or Vector3.zero
@@ -238,14 +237,13 @@ local function applyPhysicsMethod(method, motionRef, rootRef, myRoot, dt)
         return CFrame.new(predicted) * (motionRef.CFrame * bodyOffset)
     end
 
-    -- SMOOTH_FOLLOW
     local alpha = math.clamp(CONFIG.BASE_FOLLOW_ALPHA * (dt * 60), 0, 1)
     return myRoot.CFrame:Lerp(rootCF * bodyOffset, alpha)
 end
 
-------------------
--- Teleport safe
-------------------
+------------------------------------------------
+-- Teleport
+------------------------------------------------
 local function safeTeleport(targetCF)
     local char = LocalPlayer.Character
     if not char then return false end
@@ -274,9 +272,9 @@ local function safeTeleport(targetCF)
     return true
 end
 
-----------------
--- GUI creation
-----------------
+------------------------------------------------
+-- GUI
+------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ArrestStickGUI"
 ScreenGui.ResetOnSpawn = false
@@ -295,36 +293,36 @@ local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 10)
 MainCorner.Parent = MainFrame
 
--- Title bar
+-- Title bar with Hide button
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 34)
 TitleBar.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
 TitleBar.Parent = MainFrame
 
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, -120, 1, 0)
+TitleLabel.Size = UDim2.new(1, -160, 1, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "ULTRA ARREST STICK v8.3"
+TitleLabel.Text = "ULTRA ARREST STICK v8.4 ✓"
 TitleLabel.TextColor3 = Color3.fromRGB(230, 230, 240)
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextSize = 14
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TitleBar
 
-ServerHopButton = Instance.new("TextButton")
-ServerHopButton.Size = UDim2.new(0, 85, 0, 24)
-ServerHopButton.Position = UDim2.new(1, -110, 0.5, -12)
-ServerHopButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-ServerHopButton.Text = "HOP BUSIEST"
-ServerHopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ServerHopButton.Font = Enum.Font.GothamBold
-ServerHopButton.TextSize = 11
-ServerHopButton.AutoButtonColor = false
-ServerHopButton.Parent = TitleBar
+HideButton = Instance.new("TextButton")
+HideButton.Size = UDim2.new(0, 60, 0, 22)
+HideButton.Position = UDim2.new(1, -100, 0.5, -11)
+HideButton.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
+HideButton.Text = "Hide"
+HideButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+HideButton.Font = Enum.Font.GothamBold
+HideButton.TextSize = 11
+HideButton.AutoButtonColor = false
+HideButton.Parent = TitleBar
 
-local HopCorner = Instance.new("UICorner")
-HopCorner.CornerRadius = UDim.new(0, 6)
-HopCorner.Parent = ServerHopButton
+local HideCorner = Instance.new("UICorner")
+HideCorner.CornerRadius = UDim.new(0, 6)
+HideCorner.Parent = HideButton
 
 CloseButton = Instance.new("TextButton")
 CloseButton.Size = UDim2.new(0, 30, 0, 22)
@@ -342,7 +340,7 @@ CloseCorner.CornerRadius = UDim.new(0, 6)
 CloseCorner.Parent = CloseButton
 
 -- Player panel
-local PlayerPanel = Instance.new("Frame")
+PlayerPanel = Instance.new("Frame")
 PlayerPanel.Size = UDim2.new(0.52, -10, 1, -50)
 PlayerPanel.Position = UDim2.new(0, 8, 0, 40)
 PlayerPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
@@ -376,7 +374,7 @@ PlayerLayout.Padding = UDim.new(0, 3)
 PlayerLayout.Parent = PlayerScroll
 
 -- Control panel
-local ControlPanel = Instance.new("Frame")
+ControlPanel = Instance.new("Frame")
 ControlPanel.Size = UDim2.new(0.48, -10, 1, -50)
 ControlPanel.Position = UDim2.new(0.52, 2, 0, 40)
 ControlPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
@@ -454,16 +452,35 @@ RightButton = createButton(ControlPanel, UDim2.new(0.52, 0, 0, 204), nil, "RIGHT
 ForwardButton = createButton(ControlPanel, UDim2.new(0, 8, 0, 240), nil, "FWD +1", Color3.fromRGB(100, 200, 100))
 BackButton = createButton(ControlPanel, UDim2.new(0.52, 0, 0, 240), nil, "BACK -1", Color3.fromRGB(200, 100, 100))
 
--- Info update
+-- Server hop button under the rest
+ServerHopButton = createButton(
+    ControlPanel,
+    UDim2.new(0, 8, 0, 276),
+    UDim2.new(1, -16, 0, 32),
+    "HOP BUSIEST SERVER",
+    Color3.fromRGB(255, 140, 0)
+)
+
+------------------------------------------------
+-- Info & hide logic
+------------------------------------------------
 local function updateInfoLabel()
     if InfoLabel then
-        InfoLabel.Text = string.format("v8.3 | Y:%.1f X:%.1f Z:%.1f", verticalOffset, sideOffset, backOffset)
+        InfoLabel.Text = string.format("v8.4 | Y:%.1f X:%.1f Z:%.1f", verticalOffset, sideOffset, backOffset)
     end
 end
 
------------------------
+local guiHidden = false
+local function setGuiHidden(hidden)
+    guiHidden = hidden
+    PlayerPanel.Visible = not hidden
+    ControlPanel.Visible = not hidden
+    HideButton.Text = hidden and "Unhide" or "Hide"
+end
+
+------------------------------------------------
 -- Player list helpers
------------------------
+------------------------------------------------
 local function clearPlayerButtons()
     for _, btn in ipairs(playerButtons) do
         if btn and btn.Parent then
@@ -510,9 +527,9 @@ local function refreshPlayerList()
     end
 end
 
-----------------
+------------------------------------------------
 -- Stick logic
-----------------
+------------------------------------------------
 local function unstick()
     sticking = false
     if stickConnection then
@@ -573,15 +590,15 @@ local function stick()
 
         StatusLabel.Text = "Status: STICKING [" .. refType .. "]"
         InfoLabel.Text = string.format(
-            "v8.3 | %s | %.0f ups | Y:%.1f X:%.1f Z:%.1f",
+            "v8.4 | %s | %.0f ups | Y:%.1f X:%.1f Z:%.1f",
             method, state.speed, verticalOffset, sideOffset, backOffset
         )
     end)
 end
 
---------------
--- Bindings
---------------
+------------------------------------------------
+-- Events
+------------------------------------------------
 StickButton.MouseButton1Click:Connect(stick)
 UnstickButton.MouseButton1Click:Connect(unstick)
 
@@ -617,12 +634,15 @@ end)
 
 ServerHopButton.MouseButton1Click:Connect(hopToBusiestServer)
 
+HideButton.MouseButton1Click:Connect(function()
+    setGuiHidden(not guiHidden)
+end)
+
 CloseButton.MouseButton1Click:Connect(function()
     unstick()
     ScreenGui:Destroy()
 end)
 
--- Player events
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(1)
     unstick()
@@ -644,7 +664,6 @@ Players.PlayerRemoving:Connect(function(plr)
     end
 end)
 
--- Auto‑refresh list
 task.spawn(function()
     while ScreenGui.Parent do
         if tick() - lastRefresh > 3 then
@@ -657,5 +676,6 @@ end)
 
 refreshPlayerList()
 updateInfoLabel()
-print("ULTRA ARREST STICK v8.3 loaded (exploit mode).")
+setGuiHidden(false)
+print("ULTRA ARREST STICK v8.4 loaded.")
 
