@@ -1,4 +1,5 @@
---[[ ULTRA ARREST STICK v8.3 - ALL FIXES COMPLETE ]]
+-- ULTRA ARREST STICK v8.3 – Exploit Safe
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
@@ -8,18 +9,27 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- CLEANUP
-if PlayerGui:FindFirstChild("ArrestStickGUI") then PlayerGui:FindFirstChild("ArrestStickGUI"):Destroy() end
+-- Cleanup old GUI
+do
+    local old = PlayerGui:FindFirstChild("ArrestStickGUI")
+    if old then old:Destroy() end
+end
 
--- PERFECT CONFIG
+-- Config
 local CONFIG = {
-    BASE_VERTICAL = 2.0, BASE_SIDE = 1.5, BASE_BACK = -0.8,
-    BASE_FOLLOW_ALPHA = 0.55, BASE_LOOKAHEAD = 0.12,
-    MIN_DT = 1/240, MAX_DT = 1/20, RESNAP_GAP = 500,
-    TOLERANCE = 3.0, VEHICLE_RADIUS = 5000
+    BASE_VERTICAL = 2.0,
+    BASE_SIDE = 1.5,
+    BASE_BACK = -0.8,
+    BASE_FOLLOW_ALPHA = 0.55,
+    BASE_LOOKAHEAD = 0.12,
+    MIN_DT = 1/240,
+    MAX_DT = 1/20,
+    RESNAP_GAP = 500,
+    TOLERANCE = 3.0,
+    VEHICLE_RADIUS = 5000
 }
 
--- STATE
+-- State
 local verticalOffset = CONFIG.BASE_VERTICAL
 local sideOffset = CONFIG.BASE_SIDE
 local backOffset = CONFIG.BASE_BACK
@@ -30,109 +40,164 @@ local playerButtons = {}
 local lastHighlight = nil
 local lastRefresh = 0
 
--- GLOBAL GUI REFERENCES
+-- GUI refs
 local StatusLabel, InfoLabel, SelectedLabel, PlayerScroll
+local StickButton, UnstickButton
+local UpButton, DownButton, LeftButton, RightButton, ForwardButton, BackButton
+local ServerHopButton, CloseButton
 
--- SERVER HOP
+--------------------------------------------------------------------
+-- SERVER HOP (can be disabled by setting ENABLE_SERVER_HOP = false)
+--------------------------------------------------------------------
+local ENABLE_SERVER_HOP = true
+
 local function hopToBusiestServer()
+    if not ENABLE_SERVER_HOP then return end
+    if not StatusLabel then return end
+
     StatusLabel.Text = "Status: Finding busiest server..."
     StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
-    
+
     task.spawn(function()
         local success, servers = pcall(function()
-            local serversUrl = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100", game.PlaceId)
-            return HttpService:JSONDecode(game:HttpGet(serversUrl))
+            local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100"):format(game.PlaceId)
+            local raw = game:HttpGet(url)
+            return HttpService:JSONDecode(raw)
         end)
-        
-        if not success then
-            StatusLabel.Text = "Status: Network error"
+
+        if not success or not servers or not servers.data then
+            StatusLabel.Text = "Status: Server list failed"
             StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
             return
         end
-        
-        local bestServer = nil
-        local maxPlayers = 0
-        
+
+        local best, maxPlayers = nil, 0
         for _, server in ipairs(servers.data) do
-            if server.playing > maxPlayers and server.playing < server.maxPlayers and server.id ~= game.JobId then
-                maxPlayers = server.playing
-                bestServer = server
+            if server.playing and server.maxPlayers and server.id then
+                if server.playing > maxPlayers
+                    and server.playing < server.maxPlayers
+                    and server.id ~= game.JobId then
+                    maxPlayers = server.playing
+                    best = server
+                end
             end
         end
-        
-        if bestServer then
-            StatusLabel.Text = string.format("Status: Hopping to %d/%d players...", bestServer.playing, bestServer.maxPlayers)
+
+        if best then
+            StatusLabel.Text = ("Status: Hopping to %d/%d players..."):format(best.playing, best.maxPlayers)
             task.wait(1)
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, bestServer.id, LocalPlayer)
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, best.id, LocalPlayer)
         else
-            StatusLabel.Text = "Status: No busy servers found"
+            StatusLabel.Text = "Status: No busy servers"
             StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
         end
     end)
 end
 
--- BULLETPROOF VEHICLE DETECTION
+--------------------------------------------------
+-- Target reference (foot or vehicle, up to 5000)
+--------------------------------------------------
 local function getBulletproofReference(plr)
     local char = plr.Character
     if not char or not char.Parent then return nil, nil, "NONE" end
-    
+
     local hum = char:FindFirstChildOfClass("Humanoid")
-    local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+    local root = char:FindFirstChild("HumanoidRootPart")
+        or char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("Torso")
+
     if not hum or not root then return nil, nil, "NO_ROOT" end
 
+    -- Direct seat
     local seat = hum.SeatPart
     if seat then
         local vehicle = seat.Parent
-        if vehicle.PrimaryPart then return vehicle.PrimaryPart, root, "VEHICLE" end
+        if vehicle and vehicle:IsA("Model") and vehicle.PrimaryPart then
+            return vehicle.PrimaryPart, root, "VEHICLE"
+        end
         return seat, root, "SEAT"
     end
-    
+
+    -- Fallback scan (up to VEHICLE_RADIUS from local player)
     local myChar = LocalPlayer.Character
-    if myChar and myChar:FindFirstChild("HumanoidRootPart") then
-        local myPos = myChar.HumanoidRootPart.Position
-        for _, obj in pairs(Workspace:GetChildren()) do
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if myRoot then
+        local myPos = myRoot.Position
+        for _, obj in ipairs(Workspace:GetChildren()) do
             if obj:IsA("Model") and obj:FindFirstChild("VehicleSeat") then
                 local vehicleSeat = obj:FindFirstChildOfClass("VehicleSeat")
                 if vehicleSeat and vehicleSeat.Occupant == hum then
-                    local vehiclePos = obj.PrimaryPart and obj.PrimaryPart.Position or obj:GetModelCFrame().Position
+                    local vehiclePos
+                    if obj.PrimaryPart then
+                        vehiclePos = obj.PrimaryPart.Position
+                    else
+                        local ok, cf = pcall(function() return obj:GetModelCFrame() end)
+                        vehiclePos = ok and cf.Position or vehicleSeat.Position
+                    end
                     if (vehiclePos - myPos).Magnitude <= CONFIG.VEHICLE_RADIUS then
-                        if obj.PrimaryPart then return obj.PrimaryPart, root, "MAX_VEHICLE" end
+                        if obj.PrimaryPart then
+                            return obj.PrimaryPart, root, "MAX_VEHICLE"
+                        end
                     end
                 end
             elseif obj:IsA("VehicleSeat") and obj.Occupant == hum then
                 local model = obj.Parent
-                local vehiclePos = model.PrimaryPart and model.PrimaryPart.Position or obj.Position
-                if (vehiclePos - myPos).Magnitude <= CONFIG.VEHICLE_RADIUS then
-                    if model.PrimaryPart then return model.PrimaryPart, root, "MAX_VEHICLE" end
+                if model and model:IsA("Model") then
+                    local vehiclePos
+                    if model.PrimaryPart then
+                        vehiclePos = model.PrimaryPart.Position
+                    else
+                        vehiclePos = obj.Position
+                    end
+                    if (vehiclePos - myPos).Magnitude <= CONFIG.VEHICLE_RADIUS then
+                        if model.PrimaryPart then
+                            return model.PrimaryPart, root, "MAX_VEHICLE"
+                        end
+                    end
                 end
             end
         end
     end
-    
+
     return root, root, "FOOT"
 end
 
--- SMART PHYSICS SYSTEM
+----------------------
+-- Physics selection
+----------------------
 local function analyzeTargetState(motionRef, rootRef, myRoot)
     local vel = motionRef.AssemblyLinearVelocity or Vector3.zero
     local angVel = motionRef.AssemblyAngularVelocity or Vector3.zero
     local distance = (myRoot.Position - rootRef.Position).Magnitude
+
     return {
-        speed = vel.Magnitude, desync = distance,
-        angularSpeed = angVel.Magnitude, isVehicle = motionRef ~= rootRef,
+        speed = vel.Magnitude,
+        desync = distance,
+        angularSpeed = angVel.Magnitude,
+        isVehicle = motionRef ~= rootRef,
         proximityPriority = distance < 10 and 1 or 0
     }
 end
 
 local function selectPhysicsMethod(state)
-    if state.proximityPriority == 1 and state.desync < 8 then return "TIGHT_FOLLOW"
-    if state.desync > CONFIG.RESNAP_GAP then return "DIRECT_SNAP"
-    elseif state.speed > 350 then return "HEAVY_PREDICT"
-    elseif state.speed > 150 then return "VEHICLE_TRACK"
-    elseif state.angularSpeed > 10 then return "ANGULAR_MATCH"
-    elseif state.desync > 15 then return "AGGRESSIVE_LERP"
-    elseif state.isVehicle then return "VEHICLE_COUPLING"
-    else return "SMOOTH_FOLLOW" end
+    if state.proximityPriority == 1 and state.desync < 8 then
+        return "TIGHT_FOLLOW"
+    end
+    if state.desync > CONFIG.RESNAP_GAP then
+        return "DIRECT_SNAP"
+    elseif state.speed > 350 then
+        return "HEAVY_PREDICT"
+    elseif state.speed > 150 then
+        return "VEHICLE_TRACK"
+    elseif state.angularSpeed > 10 then
+        return "ANGULAR_MATCH"
+    elseif state.desync > 15 then
+        return "AGGRESSIVE_LERP"
+    elseif state.isVehicle then
+        return "VEHICLE_COUPLING"
+    else
+        return "SMOOTH_FOLLOW"
+    end
 end
 
 local function applyPhysicsMethod(method, motionRef, rootRef, myRoot, dt)
@@ -141,214 +206,456 @@ local function applyPhysicsMethod(method, motionRef, rootRef, myRoot, dt)
     local motionCF = motionRef.CFrame
     local vel = motionRef.AssemblyLinearVelocity or Vector3.zero
     local speed = vel.Magnitude
-    
+
     if method == "TIGHT_FOLLOW" then
-        local tightOffset = CFrame.new(sideOffset*0.7, verticalOffset*0.9, backOffset*0.8)
+        local tightOffset = CFrame.new(sideOffset * 0.7, verticalOffset * 0.9, backOffset * 0.8)
         return myRoot.CFrame:Lerp(rootCF * tightOffset, 0.95)
+
     elseif method == "DIRECT_SNAP" then
         return CFrame.new((rootCF * bodyOffset).Position) * (motionCF - motionCF.Position)
+
     elseif method == "HEAVY_PREDICT" then
-        local lookahead = math.clamp(0.4 + speed/300, 0.2, 0.8)
+        local lookahead = math.clamp(0.4 + speed / 300, 0.2, 0.8)
         local predicted = motionRef.Position + vel * lookahead
         return CFrame.new(predicted) * (motionCF - motionCF.Position) * bodyOffset
+
     elseif method == "VEHICLE_TRACK" then
-        local lookahead = CONFIG.BASE_LOOKAHEAD + speed/200 * 0.15
+        local lookahead = CONFIG.BASE_LOOKAHEAD + speed / 200 * 0.15
         local predicted = motionRef.Position + vel * lookahead
         return CFrame.new(predicted) * (motionCF - motionCF.Position) * bodyOffset
+
     elseif method == "ANGULAR_MATCH" then
         local predicted = motionRef.Position + vel * CONFIG.BASE_LOOKAHEAD
         return CFrame.new(predicted) * motionRef.CFrame * bodyOffset
+
     elseif method == "AGGRESSIVE_LERP" then
         local ideal = CFrame.new((rootCF * bodyOffset).Position) * (motionCF - motionCF.Position)
         return myRoot.CFrame:Lerp(ideal, 0.85)
+
     elseif method == "VEHICLE_COUPLING" then
         local lookahead = CONFIG.BASE_LOOKAHEAD * 1.2
         local predicted = motionRef.Position + vel * lookahead
         return CFrame.new(predicted) * (motionRef.CFrame * bodyOffset)
-    else
-        local alpha = math.clamp(CONFIG.BASE_FOLLOW_ALPHA * (dt * 60), 0, 1)
-        return myRoot.CFrame:Lerp(rootCF * bodyOffset, alpha)
     end
+
+    -- SMOOTH_FOLLOW
+    local alpha = math.clamp(CONFIG.BASE_FOLLOW_ALPHA * (dt * 60), 0, 1)
+    return myRoot.CFrame:Lerp(rootCF * bodyOffset, alpha)
 end
 
+------------------
+-- Teleport safe
+------------------
 local function safeTeleport(targetCF)
     local char = LocalPlayer.Character
     if not char then return false end
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return false end
-    
+
     local distance = (root.Position - targetCF.Position).Magnitude
-    if distance < CONFIG.TOLERANCE then return true end
-    
-    local success = pcall(function() char:PivotTo(targetCF) end)
-    if not success then pcall(function() root.CFrame = targetCF end) end
+    if distance < CONFIG.TOLERANCE then
+        return true
+    end
+
+    local ok = pcall(function()
+        char:PivotTo(targetCF)
+    end)
+    if not ok then
+        pcall(function()
+            root.CFrame = targetCF
+        end)
+    end
+
     pcall(function()
         root.AssemblyLinearVelocity = Vector3.zero
         root.AssemblyAngularVelocity = Vector3.zero
     end)
+
     return true
 end
 
--- COMPLETE GUI
+----------------
+-- GUI creation
+----------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ArrestStickGUI"; ScreenGui.ResetOnSpawn = false; ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling; ScreenGui.Parent = PlayerGui
+ScreenGui.Name = "ArrestStickGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 420, 0, 560); MainFrame.Position = UDim2.new(0.5, -210, 0.5, -280)
-MainFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 24); MainFrame.Active = true; MainFrame.Draggable = true; MainFrame.Parent = ScreenGui
-local MainCorner = Instance.new("UICorner"); MainCorner.CornerRadius = UDim.new(0, 10); MainCorner.Parent = MainFrame
+MainFrame.Size = UDim2.new(0, 420, 0, 560)
+MainFrame.Position = UDim2.new(0.5, -210, 0.5, -280)
+MainFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
--- TITLE BAR
-local TitleBar = Instance.new("Frame"); TitleBar.Size = UDim2.new(1, 0, 0, 34); TitleBar.BackgroundColor3 = Color3.fromRGB(28, 28, 40); TitleBar.Parent = MainFrame
-local TitleLabel = Instance.new("TextLabel"); TitleLabel.Size = UDim2.new(1, -120, 1, 0); TitleLabel.BackgroundTransparency = 1; TitleLabel.Text = "ULTRA ARREST STICK v8.3 ✓"; TitleLabel.TextColor3 = Color3.fromRGB(230, 230, 240); TitleLabel.Font = Enum.Font.GothamBold; TitleLabel.TextSize = 14; TitleLabel.TextXAlignment = Enum.TextXAlignment.Left; TitleLabel.Parent = TitleBar
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
 
-local ServerHopButton = Instance.new("TextButton"); ServerHopButton.Size = UDim2.new(0, 85, 0, 24); ServerHopButton.Position = UDim2.new(1, -110, 0.5, -12); ServerHopButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0); ServerHopButton.Text = "HOP BUSIEST"; ServerHopButton.TextColor3 = Color3.fromRGB(255, 255, 255); ServerHopButton.Font = Enum.Font.GothamBold; ServerHopButton.TextSize = 11; ServerHopButton.AutoButtonColor = false; ServerHopButton.Parent = TitleBar
-local HopCorner = Instance.new("UICorner"); HopCorner.CornerRadius = UDim.new(0, 6); HopCorner.Parent = ServerHopButton
+-- Title bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 34)
+TitleBar.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
+TitleBar.Parent = MainFrame
 
-local CloseButton = Instance.new("TextButton"); CloseButton.Size = UDim2.new(0, 30, 0, 22); CloseButton.Position = UDim2.new(1, -34, 0.5, -11); CloseButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60); CloseButton.Text = "×"; CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255); CloseButton.Font = Enum.Font.GothamBold; CloseButton.TextSize = 18; CloseButton.AutoButtonColor = false; CloseButton.Parent = TitleBar
-local CloseCorner = Instance.new("UICorner"); CloseCorner.CornerRadius = UDim.new(0, 6); CloseCorner.Parent = CloseButton
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, -120, 1, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "ULTRA ARREST STICK v8.3"
+TitleLabel.TextColor3 = Color3.fromRGB(230, 230, 240)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 14
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = TitleBar
 
--- PLAYER PANEL
-local PlayerPanel = Instance.new("Frame"); PlayerPanel.Size = UDim2.new(0.52, -10, 1, -50); PlayerPanel.Position = UDim2.new(0, 8, 0, 40); PlayerPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 30); PlayerPanel.Parent = MainFrame
-local PlayerCorner = Instance.new("UICorner"); PlayerCorner.CornerRadius = UDim.new(0, 8); PlayerCorner.Parent = PlayerPanel
-local PlayerTitle = Instance.new("TextLabel"); PlayerTitle.Size = UDim2.new(1, 0, 0, 24); PlayerTitle.BackgroundColor3 = Color3.fromRGB(32, 32, 44); PlayerTitle.Text = "PLAYERS"; PlayerTitle.TextColor3 = Color3.fromRGB(210, 210, 220); PlayerTitle.Font = Enum.Font.GothamBold; PlayerTitle.TextSize = 13; PlayerTitle.Parent = PlayerPanel
+ServerHopButton = Instance.new("TextButton")
+ServerHopButton.Size = UDim2.new(0, 85, 0, 24)
+ServerHopButton.Position = UDim2.new(1, -110, 0.5, -12)
+ServerHopButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+ServerHopButton.Text = "HOP BUSIEST"
+ServerHopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ServerHopButton.Font = Enum.Font.GothamBold
+ServerHopButton.TextSize = 11
+ServerHopButton.AutoButtonColor = false
+ServerHopButton.Parent = TitleBar
 
-PlayerScroll = Instance.new("ScrollingFrame"); PlayerScroll.Size = UDim2.new(1, 0, 1, -28); PlayerScroll.Position = UDim2.new(0, 0, 0, 28); PlayerScroll.BackgroundColor3 = Color3.fromRGB(18, 18, 24); PlayerScroll.ScrollBarThickness = 6; PlayerScroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 90); PlayerScroll.CanvasSize = UDim2.new(0, 0, 0, 0); PlayerScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y; PlayerScroll.Parent = PlayerPanel
-local PlayerLayout = Instance.new("UIListLayout"); PlayerLayout.Padding = UDim.new(0, 3); PlayerLayout.Parent = PlayerScroll
+local HopCorner = Instance.new("UICorner")
+HopCorner.CornerRadius = UDim.new(0, 6)
+HopCorner.Parent = ServerHopButton
 
--- CONTROL PANEL
-local ControlPanel = Instance.new("Frame"); ControlPanel.Size = UDim2.new(0.48, -10, 1, -50); ControlPanel.Position = UDim2.new(0.52, 2, 0, 40); ControlPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 30); ControlPanel.Parent = MainFrame
-local ControlCorner = Instance.new("UICorner"); ControlCorner.CornerRadius = UDim.new(0, 8); ControlCorner.Parent = ControlPanel
-local ControlTitle = Instance.new("TextLabel"); ControlTitle.Size = UDim2.new(1, 0, 0, 24); ControlTitle.BackgroundColor3 = Color3.fromRGB(32, 32, 44); ControlTitle.Text = "CONTROLS"; ControlTitle.TextColor3 = Color3.fromRGB(210, 210, 220); ControlTitle.Font = Enum.Font.GothamBold; ControlTitle.TextSize = 13; ControlTitle.Parent = ControlPanel
+CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 30, 0, 22)
+CloseButton.Position = UDim2.new(1, -34, 0.5, -11)
+CloseButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+CloseButton.Text = "×"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.TextSize = 18
+CloseButton.AutoButtonColor = false
+CloseButton.Parent = TitleBar
 
-SelectedLabel = Instance.new("TextLabel"); SelectedLabel.Size = UDim2.new(1, -16, 0, 40); SelectedLabel.Position = UDim2.new(0, 8, 0, 26); SelectedLabel.BackgroundColor3 = Color3.fromRGB(16, 16, 24); SelectedLabel.Text = "Selected: None"; SelectedLabel.TextColor3 = Color3.fromRGB(180, 180, 190); SelectedLabel.Font = Enum.Font.Gotham; SelectedLabel.TextSize = 12; SelectedLabel.TextWrapped = true; SelectedLabel.Parent = ControlPanel
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = CloseButton
 
-StatusLabel = Instance.new("TextLabel"); StatusLabel.Size = UDim2.new(1, -16, 0, 20); StatusLabel.Position = UDim2.new(0, 8, 0, 70); StatusLabel.BackgroundTransparency = 1; StatusLabel.Text = "Status: Idle"; StatusLabel.TextColor3 = Color3.fromRGB(150, 210, 150); StatusLabel.Font = Enum.Font.Gotham; StatusLabel.TextSize = 12; StatusLabel.Parent = ControlPanel
+-- Player panel
+local PlayerPanel = Instance.new("Frame")
+PlayerPanel.Size = UDim2.new(0.52, -10, 1, -50)
+PlayerPanel.Position = UDim2.new(0, 8, 0, 40)
+PlayerPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+PlayerPanel.Parent = MainFrame
 
-InfoLabel = Instance.new("TextLabel"); InfoLabel.Size = UDim2.new(1, -16, 0, 34); InfoLabel.Position = UDim2.new(0, 8, 0, 92); InfoLabel.BackgroundTransparency = 1; InfoLabel.Text = "Smart physics ready (v8.3)"; InfoLabel.TextColor3 = Color3.fromRGB(140, 140, 190); InfoLabel.Font = Enum.Font.Gotham; InfoLabel.TextSize = 11; InfoLabel.TextWrapped = true; InfoLabel.Parent = ControlPanel
+local PlayerCorner = Instance.new("UICorner")
+PlayerCorner.CornerRadius = UDim.new(0, 8)
+PlayerCorner.Parent = PlayerPanel
 
--- BUTTON FACTORY
+local PlayerTitle = Instance.new("TextLabel")
+PlayerTitle.Size = UDim2.new(1, 0, 0, 24)
+PlayerTitle.BackgroundColor3 = Color3.fromRGB(32, 32, 44)
+PlayerTitle.Text = "PLAYERS"
+PlayerTitle.TextColor3 = Color3.fromRGB(210, 210, 220)
+PlayerTitle.Font = Enum.Font.GothamBold
+PlayerTitle.TextSize = 13
+PlayerTitle.Parent = PlayerPanel
+
+PlayerScroll = Instance.new("ScrollingFrame")
+PlayerScroll.Size = UDim2.new(1, 0, 1, -28)
+PlayerScroll.Position = UDim2.new(0, 0, 0, 28)
+PlayerScroll.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+PlayerScroll.ScrollBarThickness = 6
+PlayerScroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 90)
+PlayerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+PlayerScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+PlayerScroll.Parent = PlayerPanel
+
+local PlayerLayout = Instance.new("UIListLayout")
+PlayerLayout.Padding = UDim.new(0, 3)
+PlayerLayout.Parent = PlayerScroll
+
+-- Control panel
+local ControlPanel = Instance.new("Frame")
+ControlPanel.Size = UDim2.new(0.48, -10, 1, -50)
+ControlPanel.Position = UDim2.new(0.52, 2, 0, 40)
+ControlPanel.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+ControlPanel.Parent = MainFrame
+
+local ControlCorner = Instance.new("UICorner")
+ControlCorner.CornerRadius = UDim.new(0, 8)
+ControlCorner.Parent = ControlPanel
+
+local ControlTitle = Instance.new("TextLabel")
+ControlTitle.Size = UDim2.new(1, 0, 0, 24)
+ControlTitle.BackgroundColor3 = Color3.fromRGB(32, 32, 44)
+ControlTitle.Text = "CONTROLS"
+ControlTitle.TextColor3 = Color3.fromRGB(210, 210, 220)
+ControlTitle.Font = Enum.Font.GothamBold
+ControlTitle.TextSize = 13
+ControlTitle.Parent = ControlPanel
+
+SelectedLabel = Instance.new("TextLabel")
+SelectedLabel.Size = UDim2.new(1, -16, 0, 40)
+SelectedLabel.Position = UDim2.new(0, 8, 0, 26)
+SelectedLabel.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
+SelectedLabel.Text = "Selected: None"
+SelectedLabel.TextColor3 = Color3.fromRGB(180, 180, 190)
+SelectedLabel.Font = Enum.Font.Gotham
+SelectedLabel.TextSize = 12
+SelectedLabel.TextWrapped = true
+SelectedLabel.Parent = ControlPanel
+
+StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -16, 0, 20)
+StatusLabel.Position = UDim2.new(0, 8, 0, 70)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Status: Idle"
+StatusLabel.TextColor3 = Color3.fromRGB(150, 210, 150)
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.TextSize = 12
+StatusLabel.Parent = ControlPanel
+
+InfoLabel = Instance.new("TextLabel")
+InfoLabel.Size = UDim2.new(1, -16, 0, 34)
+InfoLabel.Position = UDim2.new(0, 8, 0, 92)
+InfoLabel.BackgroundTransparency = 1
+InfoLabel.Text = "Smart physics ready"
+InfoLabel.TextColor3 = Color3.fromRGB(140, 140, 190)
+InfoLabel.Font = Enum.Font.Gotham
+InfoLabel.TextSize = 11
+InfoLabel.TextWrapped = true
+InfoLabel.Parent = ControlPanel
+
+-- Button helper
 local function createButton(parent, pos, size, text, color)
     local btn = Instance.new("TextButton")
-    btn.Size = size or UDim2.new(0.48, 0, 0, 32); btn.Position = pos
-    btn.BackgroundColor3 = color; btn.Text = text; btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold; btn.TextSize = 12; btn.AutoButtonColor = false; btn.Parent = parent
-    local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0, 6); corner.Parent = btn
+    btn.Size = size or UDim2.new(0.48, 0, 0, 32)
+    btn.Position = pos
+    btn.BackgroundColor3 = color
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 12
+    btn.AutoButtonColor = false
+    btn.Parent = parent
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
     return btn
 end
 
-local StickButton = createButton(ControlPanel, UDim2.new(0, 8, 0, 130), UDim2.new(0.48, 0, 0, 32), "STICK", Color3.fromRGB(60, 190, 80))
-local UnstickButton = createButton(ControlPanel, UDim2.new(0.52, 0, 0, 130), UDim2.new(0.48, 0, 0, 32), "UNSTICK", Color3.fromRGB(190, 60, 60))
-local UpButton = createButton(ControlPanel, UDim2.new(0, 8, 0, 168), nil, "UP +1", Color3.fromRGB(80, 130, 210))
-local DownButton = createButton(ControlPanel, UDim2.new(0.52, 0, 0, 168), nil, "DOWN -1", Color3.fromRGB(80, 130, 210))
-local LeftButton = createButton(ControlPanel, UDim2.new(0, 8, 0, 204), nil, "LEFT +1", Color3.fromRGB(80, 130, 210))
-local RightButton = createButton(ControlPanel, UDim2.new(0.52, 0, 0, 204), nil, "RIGHT -1", Color3.fromRGB(80, 130, 210))
-local ForwardButton = createButton(ControlPanel, UDim2.new(0, 8, 0, 240), nil, "FWD +1", Color3.fromRGB(100, 200, 100))
-local BackButton = createButton(ControlPanel, UDim2.new(0.52, 0, 0, 240), nil, "BACK -1", Color3.fromRGB(200, 100, 100))
+StickButton = createButton(ControlPanel, UDim2.new(0, 8, 0, 130), UDim2.new(0.48, 0, 0, 32), "STICK", Color3.fromRGB(60, 190, 80))
+UnstickButton = createButton(ControlPanel, UDim2.new(0.52, 0, 0, 130), UDim2.new(0.48, 0, 0, 32), "UNSTICK", Color3.fromRGB(190, 60, 60))
+UpButton = createButton(ControlPanel, UDim2.new(0, 8, 0, 168), nil, "UP +1", Color3.fromRGB(80, 130, 210))
+DownButton = createButton(ControlPanel, UDim2.new(0.52, 0, 0, 168), nil, "DOWN -1", Color3.fromRGB(80, 130, 210))
+LeftButton = createButton(ControlPanel, UDim2.new(0, 8, 0, 204), nil, "LEFT +1", Color3.fromRGB(80, 130, 210))
+RightButton = createButton(ControlPanel, UDim2.new(0.52, 0, 0, 204), nil, "RIGHT -1", Color3.fromRGB(80, 130, 210))
+ForwardButton = createButton(ControlPanel, UDim2.new(0, 8, 0, 240), nil, "FWD +1", Color3.fromRGB(100, 200, 100))
+BackButton = createButton(ControlPanel, UDim2.new(0.52, 0, 0, 240), nil, "BACK -1", Color3.fromRGB(200, 100, 100))
 
--- LIVE OFFSET DISPLAY
+-- Info update
 local function updateInfoLabel()
-    InfoLabel.Text = string.format("v8.3 | Ready | Y:%.1f X:%.1f Z:%.1f", verticalOffset, sideOffset, backOffset)
+    if InfoLabel then
+        InfoLabel.Text = string.format("v8.3 | Y:%.1f X:%.1f Z:%.1f", verticalOffset, sideOffset, backOffset)
+    end
 end
 
--- PLAYER LIST
+-----------------------
+-- Player list helpers
+-----------------------
 local function clearPlayerButtons()
-    for _, btn in ipairs(playerButtons) do if btn and btn.Parent then btn:Destroy() end end
-    playerButtons = {}
+    for _, btn in ipairs(playerButtons) do
+        if btn and btn.Parent then
+            btn:Destroy()
+        end
+    end
+    table.clear(playerButtons)
 end
 
-function refreshPlayerList()
+local function refreshPlayerList()
     clearPlayerButtons()
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
             local btn = Instance.new("TextButton")
             btn.Size = UDim2.new(1, -12, 0, 30)
-            btn.BackgroundColor3 = (plr == selectedPlayer) and Color3.fromRGB(80, 120, 210) or Color3.fromRGB(40, 40, 52)
-            btn.Text = plr.Name .. " (" .. plr.DisplayName .. ")"; btn.TextColor3 = Color3.fromRGB(220, 220, 240)
-            btn.Font = Enum.Font.Gotham; btn.TextSize = 12; btn.TextXAlignment = Enum.TextXAlignment.Left; btn.AutoButtonColor = false; btn.Parent = PlayerScroll
-            
-            local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0, 6); corner.Parent = btn
-            
+            btn.BackgroundColor3 = (plr == selectedPlayer) and Color3.fromRGB(80, 120, 210)
+                or Color3.fromRGB(40, 40, 52)
+            btn.Text = plr.Name .. " (" .. plr.DisplayName .. ")"
+            btn.TextColor3 = Color3.fromRGB(220, 220, 240)
+            btn.Font = Enum.Font.Gotham
+            btn.TextSize = 12
+            btn.TextXAlignment = Enum.TextXAlignment.Left
+            btn.AutoButtonColor = false
+            btn.Parent = PlayerScroll
+
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 6)
+            corner.Parent = btn
+
             btn.MouseButton1Click:Connect(function()
-                if lastHighlight and lastHighlight.Parent then lastHighlight.BackgroundColor3 = Color3.fromRGB(40, 40, 52) end
-                selectedPlayer = plr; lastHighlight = btn; btn.BackgroundColor3 = Color3.fromRGB(80, 120, 210)
+                if lastHighlight and lastHighlight.Parent then
+                    lastHighlight.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
+                end
+                selectedPlayer = plr
+                lastHighlight = btn
+                btn.BackgroundColor3 = Color3.fromRGB(80, 120, 210)
                 SelectedLabel.Text = "Selected: " .. plr.DisplayName .. "\n(@" .. plr.Name .. ")"
-                StatusLabel.Text = "Status: Ready"; StatusLabel.TextColor3 = Color3.fromRGB(150, 210, 150)
+                StatusLabel.Text = "Status: Ready"
+                StatusLabel.TextColor3 = Color3.fromRGB(150, 210, 150)
             end)
+
             table.insert(playerButtons, btn)
         end
     end
 end
 
--- STICKING LOGIC
+----------------
+-- Stick logic
+----------------
 local function unstick()
     sticking = false
-    if stickConnection then stickConnection:Disconnect(); stickConnection = nil end
+    if stickConnection then
+        stickConnection:Disconnect()
+        stickConnection = nil
+    end
     StickButton.BackgroundColor3 = Color3.fromRGB(60, 190, 80)
     UnstickButton.BackgroundColor3 = Color3.fromRGB(190, 60, 60)
-    StatusLabel.Text = "Status: Idle"; StatusLabel.TextColor3 = Color3.fromRGB(150, 210, 150)
+    StatusLabel.Text = "Status: Idle"
+    StatusLabel.TextColor3 = Color3.fromRGB(150, 210, 150)
     updateInfoLabel()
 end
 
 local function stick()
     if sticking or not selectedPlayer then
-        StatusLabel.Text = "Status: Select player first"; StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
+        StatusLabel.Text = "Status: Select player first"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
         return
     end
-    
-    unstick(); sticking = true
+
+    unstick()
+    sticking = true
     StickButton.BackgroundColor3 = Color3.fromRGB(40, 150, 70)
-    StatusLabel.Text = "Status: STICKING"; StatusLabel.TextColor3 = Color3.fromRGB(120, 255, 120)
-    
+    StatusLabel.Text = "Status: STICKING"
+    StatusLabel.TextColor3 = Color3.fromRGB(120, 255, 120)
+
     stickConnection = RunService.Heartbeat:Connect(function(dt)
-        if not sticking or not selectedPlayer then unstick(); return end
-        
+        if not sticking or not selectedPlayer then
+            unstick()
+            return
+        end
+
         dt = math.clamp(dt, CONFIG.MIN_DT, CONFIG.MAX_DT)
-        local char = LocalPlayer.Character; if not char then return end
-        local myRoot = char:FindFirstChild("HumanoidRootPart"); if not myRoot then return end
-        
+
+        local char = LocalPlayer.Character
+        if not char then return end
+        local myRoot = char:FindFirstChild("HumanoidRootPart")
+        if not myRoot then return end
+
         local motionRef, rootRef, refType = getBulletproofReference(selectedPlayer)
-        if not motionRef or not rootRef then StatusLabel.Text = "Status: Target lost"; StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150); unstick(); return end
-        
-        pcall(function() myRoot.AssemblyLinearVelocity = Vector3.zero; myRoot.AssemblyAngularVelocity = Vector3.zero end)
-        
+        if not motionRef or not rootRef then
+            StatusLabel.Text = "Status: Target lost"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
+            unstick()
+            return
+        end
+
+        pcall(function()
+            myRoot.AssemblyLinearVelocity = Vector3.zero
+            myRoot.AssemblyAngularVelocity = Vector3.zero
+        end)
+
         local state = analyzeTargetState(motionRef, rootRef, myRoot)
         local method = selectPhysicsMethod(state)
         local arrestCF = applyPhysicsMethod(method, motionRef, rootRef, myRoot, dt)
-        
+
         safeTeleport(arrestCF)
-        
+
         StatusLabel.Text = "Status: STICKING [" .. refType .. "]"
-        InfoLabel.Text = string.format("v8.3 | %s | %.0f ups | Y:%.1f X:%.1f Z:%.1f", method, state.speed, verticalOffset, sideOffset, backOffset)
+        InfoLabel.Text = string.format(
+            "v8.3 | %s | %.0f ups | Y:%.1f X:%.1f Z:%.1f",
+            method, state.speed, verticalOffset, sideOffset, backOffset
+        )
     end)
 end
 
--- EVENTS
+--------------
+-- Bindings
+--------------
 StickButton.MouseButton1Click:Connect(stick)
 UnstickButton.MouseButton1Click:Connect(unstick)
-UpButton.MouseButton1Click:Connect(function() verticalOffset = verticalOffset + 1; updateInfoLabel() end)
-DownButton.MouseButton1Click:Connect(function() verticalOffset = verticalOffset - 1; updateInfoLabel() end)
-LeftButton.MouseButton1Click:Connect(function() sideOffset = sideOffset + 1; updateInfoLabel() end)
-RightButton.MouseButton1Click:Connect(function() sideOffset = sideOffset - 1; updateInfoLabel() end)
-ForwardButton.MouseButton1Click:Connect(function() backOffset = backOffset + 1; updateInfoLabel() end)
-BackButton.MouseButton1Click:Connect(function() backOffset = backOffset - 1; updateInfoLabel() end)
+
+UpButton.MouseButton1Click:Connect(function()
+    verticalOffset = verticalOffset + 1
+    updateInfoLabel()
+end)
+
+DownButton.MouseButton1Click:Connect(function()
+    verticalOffset = verticalOffset - 1
+    updateInfoLabel()
+end)
+
+LeftButton.MouseButton1Click:Connect(function()
+    sideOffset = sideOffset + 1
+    updateInfoLabel()
+end)
+
+RightButton.MouseButton1Click:Connect(function()
+    sideOffset = sideOffset - 1
+    updateInfoLabel()
+end)
+
+ForwardButton.MouseButton1Click:Connect(function()
+    backOffset = backOffset + 1
+    updateInfoLabel()
+end)
+
+BackButton.MouseButton1Click:Connect(function()
+    backOffset = backOffset - 1
+    updateInfoLabel()
+end)
+
 ServerHopButton.MouseButton1Click:Connect(hopToBusiestServer)
-CloseButton.MouseButton1Click:Connect(function() unstick(); ScreenGui:Destroy() end)
 
--- PLAYER EVENTS
-LocalPlayer.CharacterAdded:Connect(function() task.wait(1); unstick(); refreshPlayerList() end)
-Players.PlayerAdded:Connect(function(plr) plr.CharacterAdded:Connect(function() task.wait(0.5); refreshPlayerList() end) end)
-Players.PlayerRemoving:Connect(function(plr) if plr == selectedPlayer then selectedPlayer = nil; SelectedLabel.Text = "Selected: None"; unstick() end end)
+CloseButton.MouseButton1Click:Connect(function()
+    unstick()
+    ScreenGui:Destroy()
+end)
 
--- AUTO REFRESH
+-- Player events
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    unstick()
+    refreshPlayerList()
+end)
+
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        refreshPlayerList()
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+    if plr == selectedPlayer then
+        selectedPlayer = nil
+        SelectedLabel.Text = "Selected: None"
+        unstick()
+    end
+end)
+
+-- Auto‑refresh list
 task.spawn(function()
     while ScreenGui.Parent do
-        if tick() - lastRefresh > 3 then refreshPlayerList(); lastRefresh = tick() end
+        if tick() - lastRefresh > 3 then
+            refreshPlayerList()
+            lastRefresh = tick()
+        end
         task.wait(1)
     end
 end)
 
 refreshPlayerList()
 updateInfoLabel()
-print("✅ ULTRA ARREST STICK v8.3 - 100% COMPLETE & PERFECT!")
-print("📱 Mobile | 🚗 5000 stud vehicles | ⚡ 8 physics modes | 🌐 Server hop")
+print("ULTRA ARREST STICK v8.3 loaded (exploit mode).")
+
