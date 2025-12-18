@@ -1,4 +1,4 @@
--- ULTRA ARREST STICK v8.4 – Exploit Ready + Hide + Server Hop Under Buttons
+-- ULTRA ARREST STICK v8.5 – Exploit Ready + Full Hide + Server Hop Under Buttons
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -45,7 +45,7 @@ local StatusLabel, InfoLabel, SelectedLabel, PlayerScroll
 local StickButton, UnstickButton
 local UpButton, DownButton, LeftButton, RightButton, ForwardButton, BackButton
 local ServerHopButton, CloseButton, HideButton
-local PlayerPanel, ControlPanel
+local PlayerPanel, ControlPanel, MainFrame, ScreenGui
 
 local ENABLE_SERVER_HOP = true
 
@@ -209,28 +209,22 @@ local function applyPhysicsMethod(method, motionRef, rootRef, myRoot, dt)
     if method == "TIGHT_FOLLOW" then
         local tightOffset = CFrame.new(sideOffset * 0.7, verticalOffset * 0.9, backOffset * 0.8)
         return myRoot.CFrame:Lerp(rootCF * tightOffset, 0.95)
-
     elseif method == "DIRECT_SNAP" then
         return CFrame.new((rootCF * bodyOffset).Position) * (motionCF - motionCF.Position)
-
     elseif method == "HEAVY_PREDICT" then
         local lookahead = math.clamp(0.4 + speed / 300, 0.2, 0.8)
         local predicted = motionRef.Position + vel * lookahead
         return CFrame.new(predicted) * (motionCF - motionCF.Position) * bodyOffset
-
     elseif method == "VEHICLE_TRACK" then
         local lookahead = CONFIG.BASE_LOOKAHEAD + speed / 200 * 0.15
         local predicted = motionRef.Position + vel * lookahead
         return CFrame.new(predicted) * (motionCF - motionCF.Position) * bodyOffset
-
     elseif method == "ANGULAR_MATCH" then
         local predicted = motionRef.Position + vel * CONFIG.BASE_LOOKAHEAD
         return CFrame.new(predicted) * motionRef.CFrame * bodyOffset
-
     elseif method == "AGGRESSIVE_LERP" then
         local ideal = CFrame.new((rootCF * bodyOffset).Position) * (motionCF - motionCF.Position)
         return myRoot.CFrame:Lerp(ideal, 0.85)
-
     elseif method == "VEHICLE_COUPLING" then
         local lookahead = CONFIG.BASE_LOOKAHEAD * 1.2
         local predicted = motionRef.Position + vel * lookahead
@@ -273,15 +267,15 @@ local function safeTeleport(targetCF)
 end
 
 ------------------------------------------------
--- GUI
+-- GUI build
 ------------------------------------------------
-local ScreenGui = Instance.new("ScreenGui")
+ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ArrestStickGUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = PlayerGui
 
-local MainFrame = Instance.new("Frame")
+MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 420, 0, 560)
 MainFrame.Position = UDim2.new(0.5, -210, 0.5, -280)
 MainFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
@@ -293,7 +287,7 @@ local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 10)
 MainCorner.Parent = MainFrame
 
--- Title bar with Hide button
+-- Title bar
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 34)
 TitleBar.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
@@ -302,7 +296,7 @@ TitleBar.Parent = MainFrame
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -160, 1, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "ULTRA ARREST STICK v8.4 ✓"
+TitleLabel.Text = "ULTRA ARREST STICK v8.5 ✓"
 TitleLabel.TextColor3 = Color3.fromRGB(230, 230, 240)
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextSize = 14
@@ -452,7 +446,6 @@ RightButton = createButton(ControlPanel, UDim2.new(0.52, 0, 0, 204), nil, "RIGHT
 ForwardButton = createButton(ControlPanel, UDim2.new(0, 8, 0, 240), nil, "FWD +1", Color3.fromRGB(100, 200, 100))
 BackButton = createButton(ControlPanel, UDim2.new(0.52, 0, 0, 240), nil, "BACK -1", Color3.fromRGB(200, 100, 100))
 
--- Server hop button under the rest
 ServerHopButton = createButton(
     ControlPanel,
     UDim2.new(0, 8, 0, 276),
@@ -462,20 +455,60 @@ ServerHopButton = createButton(
 )
 
 ------------------------------------------------
--- Info & hide logic
+-- Info & full hide / unhide
 ------------------------------------------------
 local function updateInfoLabel()
     if InfoLabel then
-        InfoLabel.Text = string.format("v8.4 | Y:%.1f X:%.1f Z:%.1f", verticalOffset, sideOffset, backOffset)
+        InfoLabel.Text = string.format("v8.5 | Y:%.1f X:%.1f Z:%.1f", verticalOffset, sideOffset, backOffset)
     end
 end
 
 local guiHidden = false
+local UnhideButton
+
+local function showUnhideButton()
+    if UnhideButton and UnhideButton.Parent then return end
+
+    UnhideButton = Instance.new("TextButton")
+    UnhideButton.Name = "ArrestStickUnhide"
+    UnhideButton.Size = UDim2.new(0, 80, 0, 26)
+    UnhideButton.Position = UDim2.new(0, 10, 0.5, -13)
+    UnhideButton.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
+    UnhideButton.Text = "Unhide"
+    UnhideButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    UnhideButton.Font = Enum.Font.GothamBold
+    UnhideButton.TextSize = 11
+    UnhideButton.AutoButtonColor = false
+    UnhideButton.Parent = PlayerGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = UnhideButton
+
+    UnhideButton.MouseButton1Click:Connect(function()
+        guiHidden = false
+        MainFrame.Visible = true
+        if UnhideButton then
+            UnhideButton:Destroy()
+            UnhideButton = nil
+        end
+        HideButton.Text = "Hide"
+    end)
+end
+
 local function setGuiHidden(hidden)
     guiHidden = hidden
-    PlayerPanel.Visible = not hidden
-    ControlPanel.Visible = not hidden
-    HideButton.Text = hidden and "Unhide" or "Hide"
+    if hidden then
+        MainFrame.Visible = false
+        showUnhideButton()
+    else
+        MainFrame.Visible = true
+        if UnhideButton then
+            UnhideButton:Destroy()
+            UnhideButton = nil
+        end
+        HideButton.Text = "Hide"
+    end
 end
 
 ------------------------------------------------
@@ -590,7 +623,7 @@ local function stick()
 
         StatusLabel.Text = "Status: STICKING [" .. refType .. "]"
         InfoLabel.Text = string.format(
-            "v8.4 | %s | %.0f ups | Y:%.1f X:%.1f Z:%.1f",
+            "v8.5 | %s | %.0f ups | Y:%.1f X:%.1f Z:%.1f",
             method, state.speed, verticalOffset, sideOffset, backOffset
         )
     end)
@@ -641,6 +674,10 @@ end)
 CloseButton.MouseButton1Click:Connect(function()
     unstick()
     ScreenGui:Destroy()
+    if UnhideButton then
+        UnhideButton:Destroy()
+        UnhideButton = nil
+    end
 end)
 
 LocalPlayer.CharacterAdded:Connect(function()
@@ -677,5 +714,5 @@ end)
 refreshPlayerList()
 updateInfoLabel()
 setGuiHidden(false)
-print("ULTRA ARREST STICK v8.4 loaded.")
+print("ULTRA ARREST STICK v8.5 loaded.")
 
